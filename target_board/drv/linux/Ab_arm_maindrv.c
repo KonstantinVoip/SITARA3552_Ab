@@ -131,7 +131,7 @@ unsigned int Hook_Func(uint hooknum,
 	//Фильтр для пакетов от НМС3 и к НМС3  нужн подумать как ручками не прописывать может лучше сделать порт 18000;
 	if (((uint)ip->saddr==NMS3_IP_ADDR)||(uint)ip->daddr==NMS3_IP_ADDR)
 	{
-	  printk("?????????SUPER????????????/\n\r");
+	  
      
 	}	
 	
