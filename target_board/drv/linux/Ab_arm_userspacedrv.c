@@ -2,7 +2,7 @@
 *                                        (c) COPYRIGHT by LONIIS.                                             *
 *                                            All rights reserved.                                                  *
 ***********************************************************************************************************************
-* Module      : mpcdrvmain.c
+* Module      : Ab_arm_userspacedrv.c
 *
 * Description : Sitara 3352 linux driver kernel module for ITDM-Driver
 *
@@ -22,7 +22,7 @@
 /*****************************************************************************/
 /*	INCLUDES							     */
 /*****************************************************************************/
-#include "include/Ab_arm_itdmdrv.h"
+#include "include/Ab_arm_userspacedrv.h"
 
 
 /**************************************************************************************************

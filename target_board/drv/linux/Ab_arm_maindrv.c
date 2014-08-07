@@ -56,12 +56,13 @@ GENERAL NOTES
 /*Local INCLUDES							     */
 /*****************************************************************************/
 #include "include/Ab_arm_maindrv.h"
+#include "include/Ab_arm_ethernetdrv.h"
 
 
 /*****************************************************************************/
 /*Global Define Defenition   							    				 */
 /*****************************************************************************/
-#define NMS3_IP_ADDR     0xC0A88280  //192.168.130.128
+
 
 
 
@@ -91,7 +92,7 @@ unsigned int Hook_Func_ARP(uint hooknum,
                   int (*okfn)(struct sk_buff *))
 
 {
-printk("+++++++++++++ARP+++++++++++++\n\r");
+//printk("+++++++++++++ARP+++++++++++++\n\r");
 return NF_ACCEPT;	
 }
 
@@ -125,15 +126,8 @@ unsigned int Hook_Func(uint hooknum,
 	 //Фильтрация 3 го уровня по IP
 	ip = (struct iphdr *)skb_network_header(skb);
 
-	
-	printk("+++++++++++++IP++++++++++=%x\n\r",(uint)ip->saddr);
-	
+	//printk("+++++++++++++IP++++++++++=%x\n\r",(uint)ip->saddr);
 	//Фильтр для пакетов от НМС3 и к НМС3  нужн подумать как ручками не прописывать может лучше сделать порт 18000;
-	if (((uint)ip->saddr==NMS3_IP_ADDR)||(uint)ip->daddr==NMS3_IP_ADDR)
-	{
-	  
-     
-	}	
 	
 		
 return NF_ACCEPT;	
@@ -154,9 +148,20 @@ Return Value:	    1  =>  Success  ,-1 => Failure
 ***************************************************************************************************/
 int Ab_arm_init_module(void)
 {
-
-    printk("Ab_arm_init_module_I-tdm() called\n"); 
+bool ret=0;
+	
+	
+	
+    printk("+Ab_arm_init_module_I-tdm() called+\n"); 
     
+ 
+    ret=Init_Arm_CPSW_MAC_Ethernet();    //Init ARM Driver
+    if(ret==0)
+    {  	
+    printk("?Error Init Ethernet Module?\n\r");	
+    }
+    
+   
     /* Заполняем структуру для регистрации hook функции */
     /* Указываем имя функции, которая будет обрабатывать пакеты */
        bundle.hook = Hook_Func;
