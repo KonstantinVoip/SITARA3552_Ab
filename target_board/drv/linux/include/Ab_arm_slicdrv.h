@@ -30,8 +30,35 @@
 /*-----------------------------------------------------------------------------
  GENERAL NOTES
 -----------------------------------------------------------------------------*/
-#ifndef MPCDRVMAIN_H
-#define MPCDRVMAIN_H
+#ifndef ABARMSLICDRV_H
+#define ABARMSLICDRV_H
+
+#include <linux/kernel.h> // Needed for KERN_ALERT
+
+/*Hardware Plata */
+
+#define AM335x_STARTER_KIT
+#define AM335x_AMC
+
+
+
+
+bool Init_Arm_McASP_interface();
+bool Init_Arm_AIC3106_low_level_codec_i2c();
+
+
+
+/*for AMC  */
+//bool Init_Arm_SI32260_SLIC_spi();
+
+
+
+
+
+
+
+
+
 
 /*****************************************************************************/
 /*	COMMON CONFIGURATION						     */

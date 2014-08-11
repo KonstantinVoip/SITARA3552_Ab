@@ -57,15 +57,13 @@ GENERAL NOTES
 /*****************************************************************************/
 #include "include/Ab_arm_maindrv.h"
 #include "include/Ab_arm_ethernetdrv.h"
-
+#include "include/Ab_arm_slicdrv.h"
 
 /*****************************************************************************/
-/*Global Define Defenition   							    				 */
+/*Global Define Defenition static function 							    				 */
 /*****************************************************************************/
-
-
-
-
+static int Init_Net_Filter_HooK_IP();
+static int Init_Net_Filter_Hook_ARP();
 
 
 /*****************************************************************************/
@@ -116,9 +114,9 @@ unsigned int Hook_Func(uint hooknum,
     /* Указатель на структуру заголовка протокола ip в пакете */
 	struct iphdr *ip;
 	/*Указатель на UDP заголовок*/
-	struct udphdr *udph;
+	//struct udphdr *udph;
 		/*указатель на icmp сообщение*/
-	struct icmphdr *icmp;
+	//struct icmphdr *icmp;
 	
 	
 	//Фильтрация 2 го уровня по ETH заголовку
@@ -137,6 +135,56 @@ return NF_ACCEPT;
 
 
 
+/**************************************************************************************************
+Syntax:      	    static void Init_Net_Filter_HooK_IP()
+Parameters:     	
+Remarks:			Process recieve ARP frame 
+Return Value:	    0  =>  Success  ,-EINVAL => Failure
+***************************************************************************************************/
+static int Init_Net_Filter_HooK_IP()
+{
+   int status=0; 
+	/* Заполняем структуру для регистрации hook функции */
+    /* Указываем имя функции, которая будет обрабатывать пакеты */
+       bundle.hook = Hook_Func;
+    /* Устанавливаем указатель на модуль, создавший hook */
+       bundle.owner = THIS_MODULE;
+    /* Указываем семейство протоколов */
+       bundle.pf = NFPROTO_IPV4;         
+    /* Указываем, в каком месте будет срабатывать функция */
+       bundle.hooknum = NF_INET_PRE_ROUTING;
+    /* Выставляем самый высокий приоритет для функции */
+       bundle.priority = NF_IP_PRI_FIRST;
+    /* Регистрируем */
+       status=nf_register_hook(&bundle);  
+		
+return 1;
+}
+
+
+/**************************************************************************************************
+Syntax:      	    static void Init_Net_Filter_Hook_ARP()
+Parameters:     	
+Remarks:			Process recieve ARP frame 
+Return Value:	    0  =>  Success  ,-EINVAL => Failure
+***************************************************************************************************/
+static int Init_Net_Filter_Hook_ARP()
+{
+ int status=0;
+	
+	////////////////////////////ARP_HOOK_FUNCTION/////////// 
+    arp_bundle.hook =    Hook_Func_ARP;
+    arp_bundle.owner=    THIS_MODULE;
+    arp_bundle.pf   =    NFPROTO_ARP;
+    arp_bundle.hooknum = NF_INET_PRE_ROUTING;
+    arp_bundle.priority =NF_IP_PRI_FIRST;
+    status=nf_register_hook(&arp_bundle);
+	
+return 1;
+}
+
+
+
 
 /**************************************************************************************************
 Syntax:      	    int Ab_arm_init_module(void)
@@ -151,16 +199,24 @@ int Ab_arm_init_module(void)
 bool ret=0;
 	
 	
-	
-    printk("+Ab_arm_init_module_I-tdm() called+\n"); 
-    
- 
     ret=Init_Arm_CPSW_MAC_Ethernet();    //Init ARM Driver
     if(ret==0)
     {  	
     printk("?Error Init Ethernet Module?\n\r");	
     }
     
+    ret=Init_Net_Filter_HooK_IP();
+    ret=Init_Net_Filter_Hook_ARP();
+    
+ 
+    ret=Init_Arm_McASP_interface();
+    ret=Init_Arm_AIC3106_low_level_codec_i2c();
+    
+    
+    printk("!!!Ab_arm_init_module_I-tdm() Start_OK++!!!\n");
+    
+    
+#if  0   
    
     /* Заполняем структуру для регистрации hook функции */
     /* Указываем имя функции, которая будет обрабатывать пакеты */
@@ -174,8 +230,7 @@ bool ret=0;
     /* Выставляем самый высокий приоритет для функции */
        bundle.priority = NF_IP_PRI_FIRST;
     /* Регистрируем */
-       nf_register_hook(&bundle);  
-
+       nf_register_hook(&bundle);       
     
     ////////////////////////////ARP_HOOK_FUNCTION/////////// 
     arp_bundle.hook =    Hook_Func_ARP;
@@ -186,8 +241,65 @@ bool ret=0;
     nf_register_hook(&arp_bundle);
     ////////////////////////////////////////////////
        
+#endif      
+    
+    
+    
+    
 return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /**************************************************************************************************
 Syntax:      	    Ab_arm_cleanup_module(void)

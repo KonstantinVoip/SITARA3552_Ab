@@ -58,7 +58,6 @@ struct net_device *cpsw0_dev,*cpsw1_dev;
 
 
 
-
 /**************************************************************************************************
 Syntax:      	    bool Init_Arm_CPSW_MAC_Ethernet()
 Parameters:     	none
@@ -85,13 +84,15 @@ bool Init_Arm_CPSW_MAC_Ethernet()
 	if(!cpsw1_dev){printk("No Device Found %s\n\r",ifname1);}
 
 	
-	for(i=0;i<=100;i++)
+	//Conflict IP_ADDR_in  seti?
+	
+	/*
+	for(i=0;i<=10;i++)
 	{
 	printk("packet_to_send=%d\n\r",i);
-	//send_packet_buf_to_cpsw0(test_full_packet_mas_2,1514);
-	send_packet_buf_to_cpsw0(test_full_packet_mas,1514);
-	
+	send_packet_buf_to_cpsw0(pack_mas,1514);
 	}
+	*/
 	
    
 return 1;	
@@ -236,9 +237,9 @@ void send_packet_buf_to_cpsw1(u16 buf[758],u16 len)
 	//priv->stats.tx_dropped++;
     } 
 	
-	else
-	{// Increment the number of packets 
-    cpsw1_dev->stats.tx_packets++;cpsw1_dev->stats.tx_bytes += len;}
+	else{// Increment the number of packets 
+    cpsw1_dev->stats.tx_packets++;cpsw1_dev->stats.tx_bytes += len;
+	}
 	
 }
 

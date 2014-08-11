@@ -20,7 +20,7 @@
 //#if 0
 
 //MASSIVE START at 1 element
-static u16 test_full_packet_mas[757]=
+u16 pack_mas[757]=
 {
     0x2011, 0x2233, 0x4455, 0x20CF, 
 	0x30A8, 0xF699, 0x0800, 0x4511,  
@@ -215,7 +215,7 @@ static u16 test_full_packet_mas[757]=
 }; 
 
 
-
+//#endif
 
 
 
