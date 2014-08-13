@@ -86,13 +86,15 @@ bool Init_Arm_CPSW_MAC_Ethernet()
 	
 	//Conflict IP_ADDR_in  seti?
 	
+	
+	
 	/*
 	for(i=0;i<=10;i++)
 	{
 	printk("packet_to_send=%d\n\r",i);
 	send_packet_buf_to_cpsw0(pack_mas,1514);
-	}
-	*/
+	}*/
+	
 	
    
 return 1;	

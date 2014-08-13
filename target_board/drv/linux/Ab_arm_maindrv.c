@@ -56,6 +56,7 @@ GENERAL NOTES
 /*Local INCLUDES							     */
 /*****************************************************************************/
 #include "include/Ab_arm_maindrv.h"
+#include "include/Ab_arm_test_drv_file.h"
 #include "include/Ab_arm_ethernetdrv.h"
 #include "include/Ab_arm_slicdrv.h"
 
@@ -198,54 +199,40 @@ int Ab_arm_init_module(void)
 {
 bool ret=0;
 	
-	
-    ret=Init_Arm_CPSW_MAC_Ethernet();    //Init ARM Driver
+
+   /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/
+
+
+
+    ret=Init_Net_Filter_HooK_IP();
+    ret=Init_Net_Filter_Hook_ARP();  	
+    
+
+    ret=Init_Arm_CPSW_MAC_Ethernet();    //Init ARM CPSW  Ethernet  Interface Driver
     if(ret==0)
     {  	
     printk("?Error Init Ethernet Module?\n\r");	
     }
     
-    ret=Init_Net_Filter_HooK_IP();
-    ret=Init_Net_Filter_Hook_ARP();
+
     
- 
-    ret=Init_Arm_McASP_interface();
-    ret=Init_Arm_AIC3106_low_level_codec_i2c();
     
+    
+    
+    /*Start Testing Function for ARM  processor*/
+    //Start_Test_Sitara_arm_func();
+    
+    
+    
+    
+    //ret=Init_Arm_McASP_interface();
+    //ret=Init_Arm_AIC3106_low_level_codec_i2c();
+   
     
     printk("!!!Ab_arm_init_module_I-tdm() Start_OK++!!!\n");
     
     
-#if  0   
    
-    /* Заполняем структуру для регистрации hook функции */
-    /* Указываем имя функции, которая будет обрабатывать пакеты */
-       bundle.hook = Hook_Func;
-    /* Устанавливаем указатель на модуль, создавший hook */
-       bundle.owner = THIS_MODULE;
-    /* Указываем семейство протоколов */
-       bundle.pf = NFPROTO_IPV4;         
-    /* Указываем, в каком месте будет срабатывать функция */
-       bundle.hooknum = NF_INET_PRE_ROUTING;
-    /* Выставляем самый высокий приоритет для функции */
-       bundle.priority = NF_IP_PRI_FIRST;
-    /* Регистрируем */
-       nf_register_hook(&bundle);       
-    
-    ////////////////////////////ARP_HOOK_FUNCTION/////////// 
-    arp_bundle.hook =    Hook_Func_ARP;
-    arp_bundle.owner=    THIS_MODULE;
-    arp_bundle.pf   =    NFPROTO_ARP;
-    arp_bundle.hooknum = NF_INET_PRE_ROUTING;
-    arp_bundle.priority =NF_IP_PRI_FIRST;
-    nf_register_hook(&arp_bundle);
-    ////////////////////////////////////////////////
-       
-#endif      
-    
-    
-    
-    
 return 0;
 }
 

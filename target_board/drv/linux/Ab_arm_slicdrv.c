@@ -16,11 +16,21 @@ GENERAL NOTES:
 1.This Module functions control SLIC for SPI bus
 2.Recieve and Transmit PCM data(in or from SLIC device)
 3.Test function for Transmit Recieve Module  Fuction 
+MCASP_VERSION_3->>>for Sitara Processor AM335x
+MACH-OMAP2     ->>>for Sitara Processor AM335x 
+
 -----------------------------------------------------------------------------*/
 
 /*****************************************************************************/
-/*	COMMON CONFIGURATION						     */
+/*	Linux Kernel Include for  MCasp header					*/
 /*****************************************************************************/
+///home/kosta/Sitara_ltib/sitara-board-port-linux/arch/arm/include/asm/hardware/asp.h
+///home/kosta/Sitara_ltib/sitara-board-port-linux/arch/arm/mach-omap2/include/mach
+//#include "asm/hardware/asp.h"
+///home/kosta/Sitara_ltib/sitara-board-port-linux/arch/arm/mach-omap2
+
+//Стартовая Инициализация Платы находиться в файле board-am335xevm.c
+
 
 
 /*****************************************************************************/
@@ -28,13 +38,11 @@ GENERAL NOTES:
 /*****************************************************************************/
 #include "include/Ab_arm_slicdrv.h"
 
+//добавим edma.h
 
-/**************************************************************************************************
-Syntax:      	    
-Parameters:     	
-Remarks:			
-Return Value:	    
-***************************************************************************************************/
+
+
+
 
 
 /*****************************************************************************/
@@ -49,6 +57,20 @@ Return Value:	    1  =>  Success  ,0 => Failure
 ***************************************************************************************************/
 bool Init_Arm_McASP_interface()
 {
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	printk("+Init_Arm_McASP_interface()+\n\r");		
 	
