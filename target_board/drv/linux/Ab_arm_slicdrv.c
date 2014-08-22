@@ -315,10 +315,10 @@ bool Init_Arm_McASP_interface()
 	mcasp=omap_device_get_by_hwmod_name(oh_name);
 	*/
 	
-	 
+	 /*
 	 pcm  = get_pcm();
 	 printk("pcm_name='%s'\n\r",pcm->name);
-	
+	 */
 	 
 	 
 	 //Работает УРА наш кодек

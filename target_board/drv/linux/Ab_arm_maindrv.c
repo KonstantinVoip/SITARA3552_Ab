@@ -201,10 +201,20 @@ bool ret=0;
 	
 
    /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/
+/*	ret=Init_Arm_McASP_interface();
+	if(ret==0)
+	{
+		printk("?Error Init McASP DEvice?\n\r");  
+	}
+*/
 
 
-   Start_Test_Sitara_arm_func();
 
+  ret= Start_Test_Sitara_arm_func();
+
+     
+   
+   
 
 #if 0
 
@@ -233,12 +243,7 @@ bool ret=0;
     /*Start Testing Function for ARM  processor*/
     //Start_Test_Sitara_arm_func();
     
-    ret=Init_Arm_McASP_interface();
-    if(ret==0)
-    {
-    printk("?Error Init McASP DEvice?\n\r");  
-    }
-      
+
       
       
     //ret=Init_Arm_AIC3106_low_level_codec_i2c();
@@ -271,8 +276,8 @@ Return Value:	    none
 void Ab_arm_cleanup_module(void)
 {	
     printk("Ab_arm_exit_module() I-TDM called\n");
-    nf_unregister_hook(&bundle);      
-    nf_unregister_hook(&arp_bundle);
+  //  nf_unregister_hook(&bundle);      
+  //  nf_unregister_hook(&arp_bundle);
 }
 
 /*****************************************************************************/
