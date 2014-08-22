@@ -203,11 +203,22 @@ bool ret=0;
    /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/
 
 
+   Start_Test_Sitara_arm_func();
+
+
+#if 0
+
+
 
     ret=Init_Net_Filter_HooK_IP();
     ret=Init_Net_Filter_Hook_ARP();  	
     
 
+    
+    
+    
+    
+    
     ret=Init_Arm_CPSW_MAC_Ethernet();    //Init ARM CPSW  Ethernet  Interface Driver
     if(ret==0)
     {  	
@@ -217,68 +228,29 @@ bool ret=0;
 
     
     
-    
+   
     
     /*Start Testing Function for ARM  processor*/
     //Start_Test_Sitara_arm_func();
     
-    
-    
-    
-    //ret=Init_Arm_McASP_interface();
+    ret=Init_Arm_McASP_interface();
+    if(ret==0)
+    {
+    printk("?Error Init McASP DEvice?\n\r");  
+    }
+      
+      
+      
     //ret=Init_Arm_AIC3106_low_level_codec_i2c();
    
     
     printk("!!!Ab_arm_init_module_I-tdm() Start_OK++!!!\n");
     
+#endif  
     
    
 return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -249,50 +249,6 @@ void send_packet_buf_to_cpsw1(u16 buf[758],u16 len)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /**************************************************************************************************
 Syntax:      	    static struct net_device *cpsw_get_device_by_name(const char *ifname)
 Parameters:     	name for ethernet device ifname
