@@ -19,17 +19,110 @@
 #include <linux/sysctl.h>
 #include <linux/mm.h>
 #include <linux/dma-mapping.h>
-
+#include <linux/kernel.h>
+#include <asm/dma.h>
 #include "memory.h"
 #include <mach/hardware.h>
 #include <mach/irqs.h>
 #include "edma.h"
+#include <plat/omap_device.h>
+
+
+#include <sound/core.h>
+#include <sound/pcm.h>
+#include <sound/pcm_params.h>
+#include <sound/initval.h>
+#include <sound/soc.h>
+
+#include "davinci-pcm.h"
+#include "davinci-mcasp.h"
+
+/* McASP Instance related macros. */
+#define MCASP_INST_BASE               (SOC_MCASP_1_CTRL_REGS)
+#define MCASP_DATA_REGS               (SOC_MCASP_1_DATA_REGS)
+#define MCASP_FIFO_REGS               (SOC_MCASP_1_FIFO_REGS)
+#define MCASP_TX_INT                  (SYS_INT_MCATXINT1)
+
+/* EDMA Related Macros. */
+#define EDMA_INST_BASE                (SOC_EDMA30CC_0_REGS)
+#define EDMA_CHANNEL_IN_USE           (EDMA3_CHA_MCASP1_TX)
+#define EDMA_COMPLTN_INT_NUM          (SYS_INT_EDMACOMPINT)
+
+
 
 
 /*****************************************************************************/
 /*Local INCLUDES							     */
 /*****************************************************************************/
 #include "include/Ab_arm_test_drv_file.h"
+
+#define DAVINCI_PCM_FMTBITS	(\
+				SNDRV_PCM_FMTBIT_S8	|\
+				SNDRV_PCM_FMTBIT_U8	|\
+				SNDRV_PCM_FMTBIT_S16_LE	|\
+				SNDRV_PCM_FMTBIT_S16_BE	|\
+				SNDRV_PCM_FMTBIT_U16_LE	|\
+				SNDRV_PCM_FMTBIT_U16_BE	|\
+				SNDRV_PCM_FMTBIT_S24_LE	|\
+				SNDRV_PCM_FMTBIT_S24_BE	|\
+				SNDRV_PCM_FMTBIT_U24_LE	|\
+				SNDRV_PCM_FMTBIT_U24_BE	|\
+				SNDRV_PCM_FMTBIT_S32_LE	|\
+				SNDRV_PCM_FMTBIT_S32_BE	|\
+				SNDRV_PCM_FMTBIT_U32_LE	|\
+				SNDRV_PCM_FMTBIT_U32_BE)
+
+static struct snd_pcm_hardware pcm_hardware_playback = {
+	.info = (SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
+		 SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
+		 SNDRV_PCM_INFO_PAUSE | SNDRV_PCM_INFO_RESUME|
+		 SNDRV_PCM_INFO_BATCH),
+	.formats = DAVINCI_PCM_FMTBITS,
+	.rates = (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
+		  SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_32000 |
+		  SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000 |
+		  SNDRV_PCM_RATE_88200 | SNDRV_PCM_RATE_96000 |
+		  SNDRV_PCM_RATE_KNOT),
+	.rate_min = 8000,
+	.rate_max = 96000,
+	.channels_min = 2,
+	.channels_max = 384,
+	.buffer_bytes_max = 128 * 1024,
+	.period_bytes_min = 32,
+	.period_bytes_max = 8 * 1024,
+	.periods_min = 16,
+	.periods_max = 255,
+	.fifo_size = 0,
+};
+
+static struct snd_pcm_hardware pcm_hardware_capture = {
+	.info = (SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
+		 SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
+		 SNDRV_PCM_INFO_PAUSE |
+		 SNDRV_PCM_INFO_BATCH),
+	.formats = DAVINCI_PCM_FMTBITS,
+	.rates = (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
+		  SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_32000 |
+		  SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000 |
+		  SNDRV_PCM_RATE_88200 | SNDRV_PCM_RATE_96000 |
+		  SNDRV_PCM_RATE_KNOT),
+	.rate_min = 8000,
+	.rate_max = 96000,
+	.channels_min = 2,
+	.channels_max = 384,
+	.buffer_bytes_max = 128 * 1024,
+	.period_bytes_min = 32,
+	.period_bytes_max = 8 * 1024,
+	.periods_min = 16,
+	.periods_max = 255,
+	.fifo_size = 0,
+};
+
+
+
+
+extern struct snd_pcm     *get_pcm();
+extern struct snd_soc_dai *get_cpu_dai();
 
 
 #undef EDMA3_DEBUG
@@ -77,7 +170,22 @@ static int bcnt = 8;
 static int ccnt = 8;
 
 
+//
+struct snd_dma_buffer buf;
+struct snd_pcm *test_pcm;
+struct snd_soc_dai *test_cpu_dai;
+struct davinci_pcm_dma_params *pa;
+struct snd_pcm_hardware *ppcm;
+struct davinci_runtime_data *prtd;
 
+
+
+
+//Вот он главный файл для работы с AUDIO McASP драйвером
+struct davinci_audio_dev *audio_dev;
+
+
+size_t size=0x8000;//0x20000; //32768  //131072 byte
 /*****************************************************************************/
 /*	Extern function Defenition						                 		*/
 /*****************************************************************************/
@@ -111,7 +219,7 @@ static void callback1(unsigned lch, u16 ch_status, void *data)
 	{
 	case DMA_COMPLETE:
 		irqraised1 = 1;
-		//DMA_PRINTK ("\n From Callback 1: Channel %d status is: %u\n",lch, ch_status);
+		DMA_PRINTK ("\n Callback 1: Channel %d status is: %u\n",lch, ch_status);
 		break;
 	case DMA_CC_ERROR:
 		irqraised1 = -1;
@@ -161,13 +269,95 @@ int Start_Test_Sitara_arm_func()
 	//TEST 2
 	//test_array_function();	
 	//TEST 3 EDMA Example 
-	  test_edma_function();
-	  test_edma_function_end();
+	//test_edma_function();
+	//test_edma_function_end();
 	//TEST 4
 	//TEST 5 
 	return result;	
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -179,67 +369,181 @@ Remarks:			Start Testing EDMA
 ***************************************************************************************************/
 static int test_edma_function()
 {
-	    int result = 0;
-		int iterations = 0;
-		int numTCs = 3;
-		int modes = 2;
-		int i,j;
+int result = 0;
+int iterations = 0;
+int numTCs = 3;
+int modes = 2;
+int i=0,j=0;
 
-		printk ("\nInitializing edma_test module\n");
 
-		DMA_PRINTK ( "\nACNT=%d, BCNT=%d, CCNT=%d", acnt, bcnt, ccnt);
+//unsigned char *area;
+//dma_addr_t addr=0;
+//size_t size=0x20000; //131072 byte
+
+
+/*
+struct device *mcasp;
+const char *oh_name="mcasp1";
+mcasp=omap_device_get_by_hwmod_name(oh_name);
+*/
+
+//Вычищаем буфер
+memset(&buf,0x0000,sizeof(buf));
+memset(&test_pcm,0x0000,sizeof(test_pcm));
+test_pcm  = get_pcm();
+
+
+
+buf.dev.type=SNDRV_DMA_TYPE_DEV; 
+buf.dev.dev = test_pcm->card->dev;
+buf.private_data = NULL;
+buf.area = dma_alloc_writecombine(test_pcm->card->dev, size,&buf.addr, GFP_KERNEL);
+buf.bytes = size;
+
+printk("preallocate_dma_buffer:cpu_viewed_area=%p,device_viewed_addr=%p,size=%d\n", (void *) buf.area, (void *) buf.addr, size);
+
+
+test_cpu_dai=get_cpu_dai();
+audio_dev=snd_soc_dai_get_drvdata(test_cpu_dai);
+
+if(!audio_dev)
+{
+	
+	printk("ERROR!\n\r"); 
+}
+
+test_cpu_dai->playback_dma_data=audio_dev->dma_params;
+//printk("mcasp_audio_dai:audio_dev->=0x%x',audio_dev->=0x%x\n\r",audio_dev->dma_params,audio_dev->sample_rate);
+/*
+printk("test_cpu_dai->name='%s',test_cpu_dai->playback_dma_data=0x%x\n\r",test_cpu_dai->name,test_cpu_dai->playback_dma_data);
+*/
+
+pa=test_cpu_dai->playback_dma_data;
+if (!pa){
+	printk("ERROR!\n\r"); 
+}
+	
+
+//printk("pcm_dma_params:pa->acnt=%p,pa->channel=%p, pa->sram_size=%d\n", (void *) pa->dma_addr, (void *) pa->channel, (void *) pa->sram_size);
+ppcm = &pcm_hardware_playback;
+
+
+dmabufsrc1 = dma_alloc_coherent (NULL, MAX_DMA_TRANSFER_IN_BYTES,&dmaphyssrc1, 0);
+DMA_PRINTK( "\nSRC1:\t%x", dmaphyssrc1);
+if (!dmabufsrc1) 
+{
+	DMA_PRINTK ("dma_alloc_coherent failed for dmaphyssrc1\n");
+	return -ENOMEM;
+}
+
+
+
+
+/*
+dmabufdest1 = dma_alloc_coherent (NULL, MAX_DMA_TRANSFER_IN_BYTES,&dmaphysdest1, 0);
+DMA_PRINTK( "\nDST1:\t%x", dmaphysdest1);
+
+if (!dmabufdest1)
+{
+	DMA_PRINTK("dma_alloc_coherent failed for dmaphysdest1\n");
+	dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc1,dmaphyssrc1);
+	return -ENOMEM;
+}*/
+
+
+buf.dev.dev = test_pcm->card->dev;
+buf.private_data = NULL;
+dmabufdest1 = dma_alloc_writecombine(test_pcm->card->dev, size,&dmaphysdest1, GFP_KERNEL);
+buf.bytes = size;
+
+
+
+
+//for (j = 0 ; j < numTCs ; j++)
+//{
+      
+//	for (i = 0 ; i < modes ; i++) 
+//	{	
+	 
+	 result = edma3_memtomemcpytest_dma(acnt, bcnt, ccnt, i, j);
+	
+//	}
+	 	
+//}
+
+
+
+
+
+
+
+
+//DMA_PRINTK( "\nSRC1:\t0x%x,area1=%p\n\r", addr,(void *) area); 
+ 
+		//printk ("\nInitializing edma_test module\n");
+
+		//DMA_PRINTK ( "\nACNT=%d, BCNT=%d, CCNT=%d", acnt, bcnt, ccnt);
 
 		/* allocate consistent memory for DMA
 		 * dmaphyssrc1(handle)= device viewed address.
 		 * dmabufsrc1 = CPU-viewed address
 		 */
 
-		dmabufsrc1 = dma_alloc_coherent (NULL, MAX_DMA_TRANSFER_IN_BYTES,
-						&dmaphyssrc1, 0);
+#if 0        
+         
+	    dmabufsrc1 = dma_alloc_coherent (NULL, MAX_DMA_TRANSFER_IN_BYTES,&dmaphyssrc1, 0);
 		DMA_PRINTK( "\nSRC1:\t%x", dmaphyssrc1);
-		if (!dmabufsrc1) {
+		if (!dmabufsrc1) 
+		{
 			DMA_PRINTK ("dma_alloc_coherent failed for dmaphyssrc1\n");
 			return -ENOMEM;
 		}
 
-		dmabufdest1 = dma_alloc_coherent (NULL, MAX_DMA_TRANSFER_IN_BYTES,
-							&dmaphysdest1, 0);
+		
+		
+		
+		dmabufdest1 = dma_alloc_coherent (NULL, MAX_DMA_TRANSFER_IN_BYTES,&dmaphysdest1, 0);
 		DMA_PRINTK( "\nDST1:\t%x", dmaphysdest1);
-		if (!dmabufdest1) {
+		
+		if (!dmabufdest1)
+		{
 			DMA_PRINTK("dma_alloc_coherent failed for dmaphysdest1\n");
-			dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc1,
-					dmaphyssrc1);
+			dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc1,dmaphyssrc1);
 			return -ENOMEM;
 		}
+#endif  
+     
+ 
 
-		dmabufsrc2 = dma_alloc_coherent (NULL, MAX_DMA_TRANSFER_IN_BYTES,
-						&dmaphyssrc2, 0);
+		
+/*		
+		dmabufsrc2 = dma_alloc_coherent (NULL, MAX_DMA_TRANSFER_IN_BYTES,&dmaphyssrc2, 0);
 		DMA_PRINTK( "\nSRC2:\t%x", dmaphyssrc2);
-		if (!dmabufsrc2) {
+		if (!dmabufsrc2) 
+		{
 			DMA_PRINTK ("dma_alloc_coherent failed for dmaphyssrc2\n");
 
-			dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc1,
-					dmaphyssrc1);
-			dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufdest1,
-					dmaphysdest1);
+			dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc1,dmaphyssrc1);
+			dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufdest1,dmaphysdest1);
 			return -ENOMEM;
 		}
 
-		dmabufdest2 = dma_alloc_coherent (NULL, MAX_DMA_TRANSFER_IN_BYTES,
-						&dmaphysdest2, 0);
+		dmabufdest2 = dma_alloc_coherent (NULL, MAX_DMA_TRANSFER_IN_BYTES,&dmaphysdest2, 0);
 		DMA_PRINTK( "\nDST2:\t%x", dmaphysdest2);
-		if (!dmabufdest2) {
+		if (!dmabufdest2)
+		{
 			DMA_PRINTK ("dma_alloc_coherent failed for dmaphysdest2\n");
-
-			dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc1,
-					dmaphyssrc1);
-			dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufdest1,
-					dmaphysdest1);
-			dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc2,
-					dmaphyssrc2);
+			dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc1,dmaphyssrc1);
+			dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufdest1,dmaphysdest1);
+			dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc2,dmaphyssrc2);
 			return -ENOMEM;
 		}
+*/
 
+		
+		
+#if 0		
+		
 		for (iterations = 0 ; iterations < 10 ; iterations++)
 		{
 		  	DMA_PRINTK ("Iteration = %d\n", iterations);
@@ -255,12 +559,17 @@ static int test_edma_function()
 					/* Run all EDMA3 test cases */
 					DMA_PRINTK ("Starting edma3_memtomemcpytest_dma\n");
 					result = edma3_memtomemcpytest_dma(acnt, bcnt, ccnt, i, j);
-					if (0 == result) {
+					if (0 == result) 
+					{
 						printk("edma3_memtomemcpytest_dma passed\n");
-					} else {
+					} 
+					else 
+					{
 						printk("edma3_memtomemcpytest_dma failed\n");
 					}
-
+                    
+					
+					/*
 					if (0 == result) {
 						DMA_PRINTK ("Starting edma3_memtomemcpytest_dma_link\n");
 						result = edma3_memtomemcpytest_dma_link(acnt, bcnt, ccnt, i, j);
@@ -269,45 +578,35 @@ static int test_edma_function()
 						} else {
 							printk("edma3_memtomemcpytest_dma_link failed\n");
 						}
-					}
-
-					if (0 == result) {
+					}*/
+                    /*
+					if (0 == result) 
+					{
 						DMA_PRINTK ("Starting edma3_memtomemcpytest_dma_chain\n");
 						result = edma3_memtomemcpytest_dma_chain(acnt, bcnt, ccnt, i, j);
-						if (0 == result) {
+						if (0 == result) 
+						{
 							printk("edma3_memtomemcpytest_dma_chain passed\n");
-						} else {
+						} 
+						else
+						{
 							printk("edma3_memtomemcpytest_dma_chain failed\n");
 						}
-					}
+					}*/
 
+					
 				}
 
 			}
 		 
 		}
-		return result;
-	
-
-	
+#endif
+		
+		
+		
+return result;	
 }
 
-
-/**************************************************************************************************
-Syntax:      	    static int test_edma_function_end()
-Parameters:     	unsigned lch, u16 ch_status, void *data
-Remarks:			END and Clear DMA FUNCTION
-***************************************************************************************************/
-static int test_edma_function_end()
-{
-
-	dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc1, dmaphyssrc1);
-	dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufdest1,dmaphysdest1);
-	dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc2, dmaphyssrc2);
-	dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufdest2,dmaphysdest2);
-	printk ("\nExiting edma_test module\n");
-	
-}
 
 
 /* DMA Channel, Mem-2-Mem Copy, ASYNC Mode, INCR Mode */
@@ -326,14 +625,8 @@ int edma3_memtomemcpytest_dma (int acnt, int bcnt, int ccnt, int sync_mode, int 
 	int descidx = 0;
 	struct edmacc_param param_set;
    
-	 
-	
-	/* Initalize source and destination buffers */
-	for (count = 0u; count < (acnt*bcnt*ccnt); count++) 
-	{
-		dmabufsrc1[count] = 'A' + (count % 26);
-		dmabufdest1[count] = 0;
-	}
+	printk("data_size=acnt*bcnt*ccnt=%d_bytes\n\r",acnt*bcnt*ccnt);
+    
 
 	/* Set B count reload as B count. */
 	BRCnt = bcnt;
@@ -346,19 +639,41 @@ int edma3_memtomemcpytest_dma (int acnt, int bcnt, int ccnt, int sync_mode, int 
 	srccidx = acnt;
 	descidx = acnt;
 
-	result = edma_alloc_channel (EDMA_CHANNEL_ANY, callback1, NULL, event_queue);
+	
+	/* Initalize source and destination buffers */
+	for (count = 0u; count < (acnt*bcnt*ccnt); count++) 
+	{
+		dmabufsrc1[count] = 'A' + (count % 26);
+		buf.area[count]=0;
+	  //buf.area[count]='A' + (count % 26);
+	}
+	
+	result = edma_alloc_channel (EDMA_CHANNEL_ANY, callback1, NULL, 0);
+	
+	
+	//result=edma_alloc_channel(pa->channel,callback1, NULL,0x2);
+	
 
+	printk("DMA_CHANNEL=result=%d\n\r",result);
 	if (result < 0)
 	{
-		DMA_PRINTK ("\nedma3_memtomemcpytest_dma::edma_alloc_channel failed for dma_ch, error:%d\n", result);
-		return result;
+			DMA_PRINTK ("\nedma3_memtomemcpytest_dma::edma_alloc_channel failed for dma_ch, error:%d\n", result);
+			return result;
 	}
 
 	dma_ch = result;
-	edma_set_src (dma_ch, (unsigned long)(dmaphyssrc1), INCR, W8BIT);
-	edma_set_dest (dma_ch, (unsigned long)(dmaphysdest1), INCR, W8BIT);
-	edma_set_src_index (dma_ch, srcbidx, srccidx);
-	edma_set_dest_index (dma_ch, desbidx, descidx);
+	
+	
+	edma_set_src  (dma_ch, (unsigned long)(dmaphyssrc1), INCR, W8BIT);
+	edma_set_dest (dma_ch, (unsigned long)(pa->dma_addr), INCR, W8BIT);
+	//edma_set_dest (dma_ch, (unsigned long)(0x11223344), INCR, W8BIT);
+	
+	//edma_set_dest (dma_ch, (unsigned long)(dmaphysdest1), INCR, W8BIT);
+	
+	
+    edma_set_src_index (dma_ch, srcbidx, srccidx);
+    edma_set_dest_index (dma_ch, desbidx, descidx);
+
 	/* A Sync Transfer Mode */
 	edma_set_transfer_params (dma_ch, acnt, bcnt, ccnt, BRCnt, ASYNC);
 
@@ -368,65 +683,80 @@ int edma3_memtomemcpytest_dma (int acnt, int bcnt, int ccnt, int sync_mode, int 
 	param_set.opt |= (1 << TCINTEN_SHIFT);
 	param_set.opt |= EDMA_TCC(EDMA_CHAN_SLOT(dma_ch));
 	edma_write_slot (dma_ch, &param_set);
-
+    
+    
 	numenabled = bcnt * ccnt;
-
+	printk("numenabled =%d\n\r",bcnt * ccnt);
+    
 	for (i = 0; i < numenabled; i++) 
 	{
-		irqraised1 = 0;
+			irqraised1 = 0;
 
-		/*
-		 * Now enable the transfer as many times as calculated above.
-		 */
-		result = edma_start(dma_ch);
-		if (result != 0) 
-		{
-			DMA_PRINTK ("edma3_memtomemcpytest_dma: davinci_start_dma failed \n");
-			break;
-		}
-
-		/* Wait for the Completion ISR. */
-		while (irqraised1 == 0u);
-
-		/* Check the status of the completed transfer */
-		if (irqraised1 < 0) 
-		{
-			/* Some error occured, break from the FOR loop. */
-			DMA_PRINTK ("edma3_memtomemcpytest_dma: Event Miss Occured!!!\n");
-			break;
-		}
-	}
-
-	if (0 == result) 
-	{
-		for (i = 0; i < (acnt*bcnt*ccnt); i++) 
-		{
-			if (dmabufsrc1[i] != dmabufdest1[i]) 
+			/*
+			 * Now enable the transfer as many times as calculated above.
+			 */
+			result = edma_start(dma_ch);
+			if (result != 0) 
 			{
-				DMA_PRINTK ("\n edma3_memtomemcpytest_dma: Data write-read matching failed at = %u\n",i);
-				Istestpassed = 0u;
+				DMA_PRINTK ("edma3__dma: davinci_start_dma failed \n");
 				break;
 			}
-		}
-		if (i == (acnt*bcnt*ccnt))
+
+			//printk ("WHILE COMPLET IRQ\n\r");
+			 
+			/* Wait for the Completion ISR. */
+			while (irqraised1 == 0u);
+
+			/* Check the status of the completed transfer */
+			if (irqraised1 < 0) 
+			{
+				/* Some error occured, break from the FOR loop. */
+				DMA_PRINTK ("edma3__dma: Event Miss Occured!!!\n");
+				break;
+			}
+	 }//END FOR
+
+
+		if (0 == result) 
 		{
-			Istestpassed = 1u;
+			for (i = 0; i < (acnt*bcnt*ccnt); i++) 
+			{
+			
+				//printk("%x",buf.area[i]);
+				if (dmabufsrc1[i] !=dmabufdest1[i]) 
+				{
+					DMA_PRINTK ("\n edma3_dma: Data write-read matching failed at = %u\n",i);
+					Istestpassed = 0u;
+					break;
+				}
+			}
+			if (i == (acnt*bcnt*ccnt))
+			{
+				Istestpassed = 1u;
+			}
+			edma_stop(dma_ch);
+			edma_free_channel(dma_ch);
 		}
-		edma_stop(dma_ch);
-		edma_free_channel(dma_ch);
-	}
+       
 
-	if (Istestpassed == 1u) 
-	{
-		DMA_PRINTK ("\nedma3_memtomemcpytest_dma: EDMA Data Transfer Successfull \n");
-	} 
-	else 
-	{
-		DMA_PRINTK ("\nedma3_memtomemcpytest_dma: EDMA Data Transfer Failed \n");
-	}
+		
+		if (Istestpassed == 1u) 
+		{
+			DMA_PRINTK ("\nedma3__dma: EDMA Data Transfer Successfull \n");
+		} 
+		else 
+		{
+			DMA_PRINTK ("\nedma3__dma: EDMA Data Transfer Failed \n");
+		}
+      
+		
+		
 
-	return result;
+return result;
 }
+
+
+
 
 /* 2 DMA Channels Linked, Mem-2-Mem Copy, ASYNC Mode, INCR Mode */
 int edma3_memtomemcpytest_dma_link(int acnt, int bcnt, int ccnt, int sync_mode, int event_queue)
@@ -628,7 +958,8 @@ int edma3_memtomemcpytest_dma_chain(int acnt, int bcnt, int ccnt, int sync_mode,
 	struct edmacc_param param_set;
 
 	/* Initalize source and destination buffers */
-	for (count = 0u; count < (acnt*bcnt*ccnt); count++) {
+	for (count = 0u; count < (acnt*bcnt*ccnt); count++)
+	{
 		dmabufsrc1[count] = 'A' + (count % 26);
 		dmabufdest1[count] = 0;
 
@@ -648,7 +979,8 @@ int edma3_memtomemcpytest_dma_chain(int acnt, int bcnt, int ccnt, int sync_mode,
 	descidx = acnt;
 
 	result = edma_alloc_channel (EDMA_CHANNEL_ANY, callback1, NULL, event_queue);
-	if (result < 0) {
+	if (result < 0)
+	{
 		DMA_PRINTK ("\nedma3_memtomemcpytest_dma_chain::davinci_request_dma"
 				" failed for dma_ch1, error:%d\n", result);
 		return result;
@@ -784,7 +1116,45 @@ int edma3_memtomemcpytest_dma_chain(int acnt, int bcnt, int ccnt, int sync_mode,
 
 
 
+/**************************************************************************************************
+Syntax:      	    static int test_edma_function_end()
+Parameters:     	unsigned lch, u16 ch_status, void *data
+Remarks:			END and Clear DMA FUNCTION
+***************************************************************************************************/
+static int test_edma_function_end()
+{
 
+	/*
+	buf.dev.dev = pcm->card->dev;
+	buf.private_data = NULL;
+	buf.area = dma_alloc_writecombine(pcm->card->dev, size,&buf.addr, GFP_KERNEL);
+	buf.bytes = size;
+    */
+	
+	/*
+	buf.dev.dev = test_pcm->card->dev;
+	buf.private_data = NULL;
+	buf.area = dma_alloc_writecombine(test_pcm->card->dev, size,&buf.addr, GFP_KERNEL);
+	buf.bytes = size;
+	printk("davinci_pcm: preallocate_dma_buffer:cpu_viewed_area=%p,device_viewed_addr=%p,size=%d\n", (void *) buf.area, (void *) buf.addr, size);
+	*/
+	
+	//dma_free_coherent(test_pcm->card->dev, size, buf.area, buf.addr);
+	  dma_free_writecombine(test_pcm->card->dev, size, buf.area, buf.addr);
+	  buf.area=0;
+	
+	
+	
+	/*
+	dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc1, dmaphyssrc1);
+	dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufdest1,dmaphysdest1);
+	dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc2, dmaphyssrc2);
+	dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufdest2,dmaphysdest2);
+	*/
+	
+	printk ("\Clear DMA AREA\n");
+	
+}
 
 
 

@@ -200,30 +200,13 @@ static struct snd_pcm_hardware pcm_hardware_capture = {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 //Берём pLatform  Device для Mcasp
 extern struct platform_device   *get_mcasp();
 extern struct snd_soc_dai       *get_codec_dai();  
+extern struct snd_soc_dai       *get_cpu_dai();
+extern struct davinci_audio_dev *get_davinci_audio_dev();
+
+
 extern struct snd_soc_codec     *get_codec();
 extern struct snd_pcm_hw_params *get_snd_pcm_hw();
 
@@ -243,6 +226,15 @@ extern int aic3x_set_dai_fmt   (struct snd_soc_dai *codec_dai,unsigned int fmt);
 extern int aic3x_set_dai_sysclk(struct snd_soc_dai *codec_dai,int clk_id, unsigned int freq, int dir);
 extern int aic3x_hw_params     (struct snd_soc_codec *codec);
 extern int aic3x_mute		   (struct snd_soc_dai *dai,int mute);
+
+//Init McASP API
+extern int  davinci_mcasp_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai);
+extern int  davinci_mcasp_set_dai_fmt(struct snd_soc_dai *cpu_dai,unsigned int fmt);
+extern int  davinci_mcasp_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params,struct snd_soc_dai *cpu_dai);
+extern int  davinci_mcasp_trigger(struct snd_pcm_substream *substream,int cmd, struct snd_soc_dai *cpu_dai);
+
+
+
 
 //Init Stream API
 extern int davinci_pcm_open        (struct snd_pcm_substream *stream);
@@ -284,15 +276,21 @@ bool Init_Arm_McASP_interface()
 	struct snd_soc_dai 	     *cpu_dai;              //mcasp Sitara
 	struct snd_soc_dai 	     *codec_dai;            //hardware_codec 
 	struct snd_soc_codec     *codec;                //
-	struct snd_pcm_hw_params *params;
+	struct snd_pcm_hw_params *params=0;
 	struct snd_pcm_substream *stream;
 	struct snd_pcm *pcm;
 	
+	struct davinci_audio_dev  *dev;
 	struct snd_pcm_hardware *ppcm;
-	
 	struct file *file=0;
 	struct snd_pcm_substream *rsubstream=0;
+	
+	
+	memset(&rsubstream,0x0000,sizeof(rsubstream));
 	memset(&file,0x0000,sizeof(file));
+	memset(&params,0x0000,sizeof(params));
+	
+	
 	//Для  кодека.TLV 
 	
 	/*
@@ -310,37 +308,58 @@ bool Init_Arm_McASP_interface()
 	
 	//У нас работает интерфейс mcasp1 можем получить device mcasp;
     //const char *oh_name="mcasp1";
+	
 	/*
 	struct device *mcasp;
 	mcasp=omap_device_get_by_hwmod_name(oh_name);
 	*/
-	
-	 /*
+
+//#if 0		
+	//rsubstream=start_play_codec();
+	 //
 	 pcm  = get_pcm();
-	 printk("pcm_name='%s'\n\r",pcm->name);
-	 */
+	 //printk("pcm_name='%s'\n\r",pcm->card->dev);
 	 
+	
 	 
 	 //Работает УРА наш кодек
-//#if 0
 	 codec_dai=get_codec_dai();
-     codec=get_codec();
-//	 params=get_snd_pcm_hw();
+	 cpu_dai=get_cpu_dai();
+	 codec=get_codec();
+	
+	 //params=get_snd_pcm_hw();
+	 
+	 
+	 dev=get_davinci_audio_dev();
+      
+	
 	 
 	 //printk("CODEC->Name='%s'\n\r",codec_dai->name);
-	 //Вызываем  кодек.
+	 //Setup наш аппаратный кодек  кодек  TLV.
 	 aic3x_set_dai_fmt(codec_dai,0x1305);                 //Идёт первая функция 
 	 aic3x_set_dai_sysclk(codec_dai,0x0,0x16e3600,0x1);   //Идёт вторая функция
 	 aic3x_hw_params (codec);                             //Идёт Третья функция
 	 aic3x_mute      (codec_dai,0x00);                    //Четвёртая функция  
-//#endif	
+
+
+	//snd_pcm_attach_substream(pcm, 0x0,file,&rsubstream);
 	
-	 
-	 
-	 
-	 //snd_pcm_attach_substream(pcm, 0x0,file,&rsubstream);
+	 //настраиваем интрефейс McASP который будет смотреть в TDM пока PCM отсчёты.
+	 //davinci_mcasp_startup(rsubstream,cpu_dai);
 	 //davinci_pcm_open(rsubstream);
-	// snd_pcm_detach_substream(rsubstream);
+	 //davinci_mcasp_set_dai_fmt(cpu_dai,0x1305);
+	 //davinci_mcasp_hw_params(rsubstream,params,cpu_dai);
+	 
+	 
+	 
+	 //davinci_pcm_open(rsubstream);
+	 
+	 
+	 
+	 //davinci_mcasp_trigger(rsubstream,0x1,cpu_dai); //отдадим на съедение 
+//#endif		 
+	 
+	 //snd_pcm_detach_substream(rsubstream);
 	 
 	 
 	 
