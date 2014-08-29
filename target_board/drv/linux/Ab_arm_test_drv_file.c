@@ -269,95 +269,13 @@ int Start_Test_Sitara_arm_func()
 	//TEST 2
 	//test_array_function();	
 	//TEST 3 EDMA Example 
-	//test_edma_function();
-	//test_edma_function_end();
+	test_edma_function();
+	test_edma_function_end();
 	//TEST 4
 	//TEST 5 
 	return result;	
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -428,6 +346,17 @@ if (!pa){
 ppcm = &pcm_hardware_playback;
 
 
+
+
+
+
+
+
+///////////////////////////////
+
+
+
+/*
 dmabufsrc1 = dma_alloc_coherent (NULL, MAX_DMA_TRANSFER_IN_BYTES,&dmaphyssrc1, 0);
 DMA_PRINTK( "\nSRC1:\t%x", dmaphyssrc1);
 if (!dmabufsrc1) 
@@ -435,7 +364,7 @@ if (!dmabufsrc1)
 	DMA_PRINTK ("dma_alloc_coherent failed for dmaphyssrc1\n");
 	return -ENOMEM;
 }
-
+*/
 
 
 
@@ -449,13 +378,6 @@ if (!dmabufdest1)
 	dma_free_coherent(NULL, MAX_DMA_TRANSFER_IN_BYTES, dmabufsrc1,dmaphyssrc1);
 	return -ENOMEM;
 }*/
-
-
-buf.dev.dev = test_pcm->card->dev;
-buf.private_data = NULL;
-dmabufdest1 = dma_alloc_writecombine(test_pcm->card->dev, size,&dmaphysdest1, GFP_KERNEL);
-buf.bytes = size;
-
 
 
 
@@ -609,6 +531,12 @@ return result;
 
 
 
+
+
+
+
+
+
 /* DMA Channel, Mem-2-Mem Copy, ASYNC Mode, INCR Mode */
 int edma3_memtomemcpytest_dma (int acnt, int bcnt, int ccnt, int sync_mode, int event_queue)
 {
@@ -623,7 +551,7 @@ int edma3_memtomemcpytest_dma (int acnt, int bcnt, int ccnt, int sync_mode, int 
 	int desbidx = 0;
 	int srccidx = 0;
 	int descidx = 0;
-	struct edmacc_param param_set;
+	struct edmacc_param edma_par;
    
 	printk("data_size=acnt*bcnt*ccnt=%d_bytes\n\r",acnt*bcnt*ccnt);
     
@@ -639,7 +567,32 @@ int edma3_memtomemcpytest_dma (int acnt, int bcnt, int ccnt, int sync_mode, int 
 	srccidx = acnt;
 	descidx = acnt;
 
+
 	
+	
+//Работает кусок pcm/dma-request выделяет нужные каналы.	
+/*	
+	result = edma_alloc_channel (0xa, callback1, NULL, 0x2);
+	
+	//result=edma_alloc_channel(pa->channel,callback1, NULL,0x2);
+	printk("DMA_CHANNEL=result=%d\n\r",result);
+	
+	// Request a Link Channel 
+	result = edma_alloc_slot (EDMA_CTLR(0xa), EDMA_SLOT_ANY);
+	printk("SLOT=result=%d\n\r",result);
+	
+	
+	edma_read_slot(0xbf, &edma_par);
+	edma_par.opt |= TCINTEN |EDMA_TCC(EDMA_CHAN_SLOT(0xa));
+	edma_par.link_bcntrld = EDMA_CHAN_SLOT(0xbf) << 5;
+	edma_write_slot(0xbf, &edma_par);
+*/	
+	
+	
+	
+	
+	
+#if 0	
 	/* Initalize source and destination buffers */
 	for (count = 0u; count < (acnt*bcnt*ccnt); count++) 
 	{
@@ -648,13 +601,11 @@ int edma3_memtomemcpytest_dma (int acnt, int bcnt, int ccnt, int sync_mode, int 
 	  //buf.area[count]='A' + (count % 26);
 	}
 	
-	result = edma_alloc_channel (EDMA_CHANNEL_ANY, callback1, NULL, 0);
 	
 	
-	//result=edma_alloc_channel(pa->channel,callback1, NULL,0x2);
 	
-
-	printk("DMA_CHANNEL=result=%d\n\r",result);
+	
+	
 	if (result < 0)
 	{
 			DMA_PRINTK ("\nedma3_memtomemcpytest_dma::edma_alloc_channel failed for dma_ch, error:%d\n", result);
@@ -716,7 +667,8 @@ int edma3_memtomemcpytest_dma (int acnt, int bcnt, int ccnt, int sync_mode, int 
 			}
 	 }//END FOR
 
-
+     
+	 /*
 		if (0 == result) 
 		{
 			for (i = 0; i < (acnt*bcnt*ccnt); i++) 
@@ -748,9 +700,9 @@ int edma3_memtomemcpytest_dma (int acnt, int bcnt, int ccnt, int sync_mode, int 
 		{
 			DMA_PRINTK ("\nedma3__dma: EDMA Data Transfer Failed \n");
 		}
-      
+       */
 		
-		
+#endif		
 
 return result;
 }

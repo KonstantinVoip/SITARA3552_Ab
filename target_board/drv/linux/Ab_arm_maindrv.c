@@ -203,17 +203,19 @@ bool ret=0;
    /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/
 	
    
-   /*
-   ret=Init_Arm_McASP_interface();
+   
+    ret=Init_Arm_McASP_interface();
 	if(ret==0)
 	{
 		printk("?Error Init McASP DEvice?\n\r");  
 	}
-   */
-
+   
+     
+	  
+	 
 
    
-   ret= Start_Test_Sitara_arm_func();
+  // ret= Start_Test_Sitara_arm_func();
 
      
    
