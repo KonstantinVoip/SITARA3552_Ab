@@ -254,7 +254,7 @@ extern int snd_pcm_do_prepare(struct snd_pcm_substream *substream, int state);
 extern int snd_pcm_pre_start(struct snd_pcm_substream *substream, int state);
 extern int snd_pcm_do_start(struct snd_pcm_substream *substream, int state);
 
-
+extern int davinci_pcm_prepare(struct snd_pcm_substream *substream);
 
 /*****************************************************************************/
 /*Local INCLUDES							     */
@@ -299,6 +299,9 @@ bool Init_Arm_McASP_interface()
 	struct snd_pcm_hardware *ppcm;
 	struct file *file=0;
 	struct snd_pcm_substream *rsubstream=0;
+	
+	
+	//struct snd_pcm_ops operation;
 	
 	
 	memset(&rsubstream,0x0000,sizeof(rsubstream));
@@ -358,36 +361,51 @@ bool Init_Arm_McASP_interface()
 	 aic3x_mute      (codec_dai,0x00);                    //Четвёртая функция  
 
 
-	 davinci_mcasp_startup(rsubstream,cpu_dai);
+	 davinci_mcasp_startup(rsubstream,cpu_dai);           //
 	 davinci_mcasp_set_dai_fmt(cpu_dai,0x1305);
 	 davinci_mcasp_hw_params(rsubstream,params,cpu_dai);
 	 
 	
 	 
-	 snd_pcm_open_substream(pcm, 0x0,file,&rsubstream);  
-	 snd_pcm_prepare(rsubstream,file);
-	 snd_pcm_do_prepare(rsubstream,0x80002); 
+	 
+	
+	 
+	 
+	 //snd_pcm_open_substream(pcm, 0x0,file,&rsubstream);   //Открываем ПОТОК на буфер не нужно работаем без этого пока.
+	 
+	 
+	 
+	 snd_pcm_attach_substream(pcm, 0x0,file,&rsubstream); 
+	 davinci_pcm_open(rsubstream);
+	 
+	 
+	 //////////////////////////////////////////////////////////////////////
+	 //davinci_pcm_prepare(rsubstream);
+	
+	 rsubstream->ops->prepare(rsubstream);
+	 rsubstream->ops->trigger(rsubstream, SNDRV_PCM_TRIGGER_START); 
+	 
+	 
+	/* 
+	 snd_pcm_do_prepare(rsubstream,0x80002);   //Проверяю ТЕСТ
 	 snd_pcm_post_prepare(rsubstream,0x80002);
-	 
-	 
 	 
 	 
 	 snd_pcm_pre_start(rsubstream,0x3);
 	 snd_pcm_do_start (rsubstream,0x3);
+	
+	*/ 
 	 
 	 
-	 //davinci_mcasp_trigger(rsubstream,0x1,cpu_dai);
-	 
-	 
-	 
-	 
-/*
+
+	 //davinci_mcasp_trigger(rsubstream,0x1,cpu_dai); 
+     /*
 	 snd_pcm_open_substream(pcm, 0x0,file,&rsubstream);
 	 snd_pcm_pre_start(rsubstream,0x3);
-*/
+     */
 	 
 	 //snd_pcm_attach_substream(pcm, 0x0,file,&rsubstream);
-	 //davinci_pcm_open(rsubstream);
+	 //c
 	 
 	 
 	 
