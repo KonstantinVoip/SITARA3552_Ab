@@ -43,6 +43,7 @@ MACH-OMAP2     ->>>for Sitara Processor AM335x
 #include <sound/pcm_params.h>
 #include <sound/initval.h>
 #include <sound/soc.h>
+#include <sound/soc-dapm.h>
 
 #include "davinci-pcm.h"
 #include "davinci-mcasp.h"
@@ -217,7 +218,7 @@ extern struct snd_pcm_substream *start_play_codec();
 extern struct snd_pcm_substream *get_stream();
 
 
-
+extern int soc_pcm_trigger(struct snd_pcm_substream *substream,int cmd);
 
 
 
@@ -255,6 +256,12 @@ extern int snd_pcm_pre_start(struct snd_pcm_substream *substream, int state);
 extern int snd_pcm_do_start(struct snd_pcm_substream *substream, int state);
 
 extern int davinci_pcm_prepare(struct snd_pcm_substream *substream);
+extern int davinci_pcm_trigger(struct snd_pcm_substream *substream, int cmd);
+
+extern int snd_soc_dapm_stream_event(struct snd_soc_pcm_runtime *rtd,const char *stream, int event);
+
+
+//extern void  snd_soc_dapm_stream_event(rtd,codec_dai->driver->playback.stream_name,SND_SOC_DAPM_STREAM_START);
 
 /*****************************************************************************/
 /*Local INCLUDES							     */
@@ -300,15 +307,23 @@ bool Init_Arm_McASP_interface()
 	struct file *file=0;
 	struct snd_pcm_substream *rsubstream=0;
 	
+	int i;
 	
 	//struct snd_pcm_ops operation;
+	//struct snd_pcm_ops  ops;
+	struct snd_pcm_str * pstr;
+	struct snd_pcm_runtime *runtime;
+	size_t size;
 	
+	struct snd_pcm_ops  *hardware_ops;
+	struct snd_soc_pcm_runtime *rtd; 
+	struct snd_soc_platform *platform;
 	
 	memset(&rsubstream,0x0000,sizeof(rsubstream));
 	memset(&file,0x0000,sizeof(file));
 	memset(&params,0x0000,sizeof(params));
 	
-	
+	int ret = 0;
 	//Для  кодека.TLV 
 	
 	/*
@@ -365,32 +380,259 @@ bool Init_Arm_McASP_interface()
 	 davinci_mcasp_set_dai_fmt(cpu_dai,0x1305);
 	 davinci_mcasp_hw_params(rsubstream,params,cpu_dai);
 	 
-	
 	 
 	 
 	
 	 
 	 
+	 
+	 
+	 
+	 
+	 davinci_pcm_open(rsubstream);  //вся инициализацтя проходит как надо
 	 //snd_pcm_open_substream(pcm, 0x0,file,&rsubstream);   //Открываем ПОТОК на буфер не нужно работаем без этого пока.
-	 
-	 
-	 
-	 snd_pcm_attach_substream(pcm, 0x0,file,&rsubstream); 
-	 davinci_pcm_open(rsubstream);
-	 
-	 
-	 //////////////////////////////////////////////////////////////////////
-	 //davinci_pcm_prepare(rsubstream);
 	
-	 rsubstream->ops->prepare(rsubstream);
-	 rsubstream->ops->trigger(rsubstream, SNDRV_PCM_TRIGGER_START); 
+	 ////////////////////////////////////делаем  большую заглушку//////////////////////////////	 
+	// snd_pcm_attach_substream(pcm, 0x0,file,&rsubstream); 
+	 ////////////////////////////////////////////////////
+	pstr = &pcm->streams[0];
+	if (pstr->substream == NULL || pstr->substream_count == 0)
+	{
+			return -ENODEV;
+	}
+    
+	
+	
+	//pstr->substream->ops->prepare(rsubstream);
+	//pstr->substream->ops->trigger(rsubstream, SNDRV_PCM_TRIGGER_START); 
+
+	//hardware_ops=&pstr->substream->ops;
+	/*
+	hardware_ops->prepare(rsubstream);
+	hardware_ops->trigger(rsubstream, SNDRV_PCM_TRIGGER_START); 
+	*/
+	
+	
+	
+	 
+	for (rsubstream = pstr->substream; rsubstream; rsubstream = rsubstream->next)
+			if (!SUBSTREAM_BUSY(rsubstream))
+				break;
+	      __ok:
+		if (rsubstream == NULL)
+			return -EAGAIN; 
+	 
+	 
+    runtime = kzalloc(sizeof(*runtime), GFP_KERNEL);
+	if (runtime == NULL)
+	{
+			return -ENOMEM;
+	}
+			
+			
+			
+    size = PAGE_ALIGN(sizeof(struct snd_pcm_mmap_status));
+	runtime->status = snd_malloc_pages(size, GFP_KERNEL);
+		
+		
+    if (runtime->status == NULL) 
+	{
+			kfree(runtime);
+			return -ENOMEM;
+	 }
+	 
+	memset((void*)runtime->status, 0, size);
+	size = PAGE_ALIGN(sizeof(struct snd_pcm_mmap_control));
+	runtime->control = snd_malloc_pages(size, GFP_KERNEL);
+	 
+	 
+	if (runtime->control == NULL)
+	{
+		snd_free_pages((void*)runtime->status,PAGE_ALIGN(sizeof(struct snd_pcm_mmap_status)));
+		kfree(runtime);
+		return -ENOMEM;
+	}
+	
+	memset((void*)runtime->control, 0, size);
+	runtime->status->state = SNDRV_PCM_STATE_OPEN;
+	
+	
+	
+	rsubstream->runtime = runtime;
+	rsubstream->private_data = pcm->private_data;
+	rsubstream->ref_count = 1;
+	rsubstream->f_flags = 0;//file->f_flags;
+	rsubstream->pid = 0;//get_pid(task_pid(current));
+	
+	
+	/////////////////////////////////////////////////////////////////
+	rtd=rsubstream->private_data;
+	platform=rtd->platform;
+
+//#if 0	
+	if (rtd->dai_link->ops && rtd->dai_link->ops->prepare) 
+	{
+		ret = rtd->dai_link->ops->prepare(rsubstream);
+		printk("+rtd->dai_link->ops->prepare\n\r+");
+		if (ret < 0) 
+		{
+			printk(KERN_ERR "asoc: machine prepare error\n");
+			
+		}
+	}
+
+	if (platform->driver->ops && platform->driver->ops->prepare) 
+	{
+		ret = platform->driver->ops->prepare(rsubstream);
+		//printk("platfor")
+		if (ret < 0) 
+		{
+			printk(KERN_ERR "asoc: platform prepare error\n");
+			
+		}
+	}
+
+	if (codec_dai->driver->ops->prepare)
+	 {
+		ret = codec_dai->driver->ops->prepare(rsubstream, codec_dai);
+		if (ret < 0) {
+			printk(KERN_ERR "asoc: codec DAI prepare error\n");
+			
+		}
+	}
+
+	if (cpu_dai->driver->ops->prepare) 
+	{
+		ret = cpu_dai->driver->ops->prepare(rsubstream, cpu_dai);
+		if (ret < 0) {
+			printk(KERN_ERR "asoc: cpu DAI prepare error\n");
+			
+		}
+	}
+
+	/* cancel any delayed stream shutdown that is pending */
+	if (rsubstream->stream == SNDRV_PCM_STREAM_PLAYBACK &&codec_dai->pop_wait) 
+	{
+		codec_dai->pop_wait = 0;
+		cancel_delayed_work(&rtd->delayed_work);
+	}
+
+
+	if (rsubstream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+	{
+	snd_soc_dapm_stream_event(rtd,codec_dai->driver->playback.stream_name,SND_SOC_DAPM_STREAM_START);
+	}
+	else
+	{	
+	snd_soc_dapm_stream_event(rtd,codec_dai->driver->capture.stream_name,SND_SOC_DAPM_STREAM_START);
+    }
+	snd_soc_dai_digital_mute(codec_dai, 0);
+
+	
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
+	if (codec_dai->driver->ops->trigger) 
+	{
+	ret = codec_dai->driver->ops->trigger(rsubstream, 0x1/*cmd*/, codec_dai);
+	if (ret < 0)
+	return ret;
+	}
+
+	if (platform->driver->ops && platform->driver->ops->trigger) 
+	{
+	ret = platform->driver->ops->trigger(rsubstream,0x1 /*cmd*/);
+	if (ret < 0)
+	return ret;
+	}
+
+	if (cpu_dai->driver->ops->trigger)
+	{
+	ret = cpu_dai->driver->ops->trigger(rsubstream,0x1 /*cmd*/, cpu_dai);
+	if (ret < 0)
+	return ret;
+	}
+	
+	
+//#endif	
+	
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	//soc_pcm_trigger(rsubstream,0x1);
+	//pstr->substream_opened++;
+	//soc_pcm_prepare(rsubstream);
+	////////////////////////////////////////////////////////////////////////
+	
+	
+	
+	
+	//rsubstream->ops->prepare(rsubstream);
+    //rsubstream->ops->trigger(rsubstream, SNDRV_PCM_TRIGGER_START); 	
+	
+     
+    
+	
+	/*
+	pstr->substream->ops->prepare(rsubstream);
+	pstr->substream->ops->trigger(rsubstream, SNDRV_PCM_TRIGGER_START); 
+	*/
+	
+	
+	/*
+	davinci_pcm_prepare(rsubstream);
+	for(i=0;i<10;i++)
+		{
+		davinci_pcm_trigger(rsubstream,0x1);
+		}
+	davinci_mcasp_trigger(rsubstream,0x1,cpu_dai); 
+	*/
+	
+	
+	 
+	 
+	 //ops.prepare(rsubstream);
+		 /*
+		 davinci_pcm_prepare(rsubstream);
+		 davinci_mcasp_trigger(rsubstream,0x1,cpu_dai); 
+		 */
+	 
+	 
+	 
+	 
+	 
 	 
 	 
 	/* 
 	 snd_pcm_do_prepare(rsubstream,0x80002);   //Проверяю ТЕСТ
 	 snd_pcm_post_prepare(rsubstream,0x80002);
-	 
-	 
 	 snd_pcm_pre_start(rsubstream,0x3);
 	 snd_pcm_do_start (rsubstream,0x3);
 	
@@ -405,7 +647,7 @@ bool Init_Arm_McASP_interface()
      */
 	 
 	 //snd_pcm_attach_substream(pcm, 0x0,file,&rsubstream);
-	 //c
+	 
 	 
 	 
 	 

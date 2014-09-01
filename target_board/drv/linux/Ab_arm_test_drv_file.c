@@ -387,6 +387,11 @@ if (!dmabufdest1)
 //	for (i = 0 ; i < modes ; i++) 
 //	{	
 	 
+
+
+
+
+
 	 result = edma3_memtomemcpytest_dma(acnt, bcnt, ccnt, i, j);
 	
 //	}
