@@ -383,6 +383,10 @@ bool Init_Arm_McASP_interface()
 	 
 	 
 	
+	 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	 
 	 
 	 
@@ -469,11 +473,16 @@ bool Init_Arm_McASP_interface()
 	rtd=rsubstream->private_data;
 	platform=rtd->platform;
 
-//#if 0	
+
+////////////////////PREPARE   FUNCTIONS////////////////////////////	
+	
+	
+	
 	if (rtd->dai_link->ops && rtd->dai_link->ops->prepare) 
 	{
+		printk("<<<+++rtd->dai_link->ops->prepare+++>>>>\n\r+");
 		ret = rtd->dai_link->ops->prepare(rsubstream);
-		printk("+rtd->dai_link->ops->prepare\n\r+");
+
 		if (ret < 0) 
 		{
 			printk(KERN_ERR "asoc: machine prepare error\n");
@@ -483,8 +492,11 @@ bool Init_Arm_McASP_interface()
 
 	if (platform->driver->ops && platform->driver->ops->prepare) 
 	{
+		printk("<<<++++platform->driver->ops++++>>>\n\r+");
 		ret = platform->driver->ops->prepare(rsubstream);
-		//printk("platfor")
+	
+	
+		
 		if (ret < 0) 
 		{
 			printk(KERN_ERR "asoc: platform prepare error\n");
@@ -494,8 +506,12 @@ bool Init_Arm_McASP_interface()
 
 	if (codec_dai->driver->ops->prepare)
 	 {
+		printk("<<++++codec_dai->driver->ops->prepare+++>>\n\r+");
 		ret = codec_dai->driver->ops->prepare(rsubstream, codec_dai);
-		if (ret < 0) {
+
+		
+		if (ret < 0) 
+		{
 			printk(KERN_ERR "asoc: codec DAI prepare error\n");
 			
 		}
@@ -503,8 +519,12 @@ bool Init_Arm_McASP_interface()
 
 	if (cpu_dai->driver->ops->prepare) 
 	{
+		printk("<<<++++++cpu_dai->driver->ops->prepare++++>>>\n\r+");
 		ret = cpu_dai->driver->ops->prepare(rsubstream, cpu_dai);
-		if (ret < 0) {
+		
+
+		if (ret < 0) 
+		{
 			printk(KERN_ERR "asoc: cpu DAI prepare error\n");
 			
 		}
@@ -513,6 +533,7 @@ bool Init_Arm_McASP_interface()
 	/* cancel any delayed stream shutdown that is pending */
 	if (rsubstream->stream == SNDRV_PCM_STREAM_PLAYBACK &&codec_dai->pop_wait) 
 	{
+		printk("<<<<<+substream->stream == SNDRV_PCM_STREAM_PLAYBACK &&codec_dai->pop_wait++>>>\n\r+");
 		codec_dai->pop_wait = 0;
 		cancel_delayed_work(&rtd->delayed_work);
 	}
@@ -529,23 +550,35 @@ bool Init_Arm_McASP_interface()
 	snd_soc_dai_digital_mute(codec_dai, 0);
 
 	
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
+    /////////////////////////////TRIGGER_FUNCTIONS////////////////////////////////	
+	
+	
+	
 	if (codec_dai->driver->ops->trigger) 
-	{
-	ret = codec_dai->driver->ops->trigger(rsubstream, 0x1/*cmd*/, codec_dai);
-	if (ret < 0)
-	return ret;
+	{		
+		
+		printk("<<++++codec_dai->driver->ops->trigger+++>>\n\r+");
+		ret = codec_dai->driver->ops->trigger(rsubstream, 0x1/*cmd*/, codec_dai);
+		if (ret < 0)	
+		{
+			return ret;
+		}
 	}
-
+	
+	
 	if (platform->driver->ops && platform->driver->ops->trigger) 
 	{
+	printk("<<++++platform->driver->ops->trigger+++>>\n\r+");
 	ret = platform->driver->ops->trigger(rsubstream,0x1 /*cmd*/);
 	if (ret < 0)
 	return ret;
 	}
 
+	
+	
 	if (cpu_dai->driver->ops->trigger)
 	{
+	printk("<<++++cpu_dai->driver->ops->trigger+++>>\n\r+");
 	ret = cpu_dai->driver->ops->trigger(rsubstream,0x1 /*cmd*/, cpu_dai);
 	if (ret < 0)
 	return ret;
