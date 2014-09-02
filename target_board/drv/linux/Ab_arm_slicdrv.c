@@ -119,7 +119,9 @@ MACH-OMAP2     ->>>for Sitara Processor AM335x
 #include <plat/am33xx.h>
 */
 
-
+#define DMA_PRINTK(ARGS...)  printk(KERN_INFO "<%s>: ",__FUNCTION__);printk(ARGS)
+#define DMA_FN_IN printk(KERN_INFO "[%s]: start\n", __FUNCTION__)
+#define DMA_FN_OUT printk(KERN_INFO "[%s]: end\n",__FUNCTION__)
 
 
 
@@ -262,6 +264,9 @@ extern int snd_soc_dapm_stream_event(struct snd_soc_pcm_runtime *rtd,const char 
 
 
 //extern void  snd_soc_dapm_stream_event(rtd,codec_dai->driver->playback.stream_name,SND_SOC_DAPM_STREAM_START);
+struct snd_dma_buffer *dmab_slic=NULL;
+
+
 
 /*****************************************************************************/
 /*Local INCLUDES							     */
@@ -284,6 +289,154 @@ struct snd_soc_dai *cpu_dai;
 /*****************************************************************************/
 /*	PUBLIC FUNCTION DEFINITIONS					     */
 /*****************************************************************************/
+static void enqueue_dma()
+{
+	dma_addr_t dma_pos;
+	dma_addr_t src, dst;
+	static unsigned int mcasp_count;
+	unsigned int period_size;
+	unsigned int dma_offset;
+	unsigned int data_type;
+	unsigned short acnt;
+	unsigned int fifo_level;
+	unsigned short src_bidx, dst_bidx;
+	unsigned short src_cidx, dst_cidx;
+	unsigned int count; 
+	unsigned int dma_src;
+	
+	dma_src=dmab_slic->area;
+	
+    mcasp_count=mcasp_count+1;
+	period_size = 0xfa0;                  	  //snd_pcm_lib_period_bytes(substream);
+	dma_offset  = mcasp_count*period_size; // prtd->period * period_size;
+	dma_pos     = /*0x8ad80000*/dma_src+dma_offset;  // runtime->dma_addr+ dma_offset;
+	fifo_level  = 0x20;			  //prtd->params->fifo_level;
+                 
+	mcasp_count=mcasp_count+1;
+	//printk("runtime->dma_addr=0x%x,prtd->period=0x%x\n\r",prtd->period,runtime->dma_addr);
+	printk("+enqueue_dma_=0x%x,dma_src=0x%x\n\r",mcasp_count,dma_pos);
+	
+	
+	data_type = 0x2;//prtd->params->data_type;
+    count = period_size / data_type;
+
+
+	//printk("DaTA_TYPE=0x%x\n\r");
+
+
+     if (fifo_level)
+	   count /= fifo_level;
+	
+	 
+     //memcpy(0xffd80000,rawData,131072);
+     
+	 src = dma_pos;
+	 dst = 0x46400000;   //prtd->params->dma_addr;
+	 src_bidx = data_type;
+	 dst_bidx = 0;
+	 src_cidx = data_type * fifo_level;
+	 dst_cidx = 0;
+	
+	 
+	 acnt = 0x2;
+	 edma_set_src(0xbf, src, INCR, W8BIT);
+	 edma_set_dest(0xbf, dst, INCR, W8BIT);
+
+	 edma_set_src_index(0xbf, src_bidx, src_cidx);
+	 edma_set_dest_index(0xbf, dst_bidx, dst_cidx);
+	
+	
+	 if (!fifo_level)
+	 { 
+			edma_set_transfer_params(0xbf, acnt, count, 1, 0,ASYNC);
+	 } 
+			
+	 else
+	 {		
+		 edma_set_transfer_params(0xbf, acnt, fifo_level,count, fifo_level,ABSYNC);
+	 }
+	 
+	
+}
+
+
+/**************************************************************************************************
+Syntax:      	    static void callback1(unsigned lch, u16 ch_status, void *data)
+Parameters:     	unsigned lch, u16 ch_status, void *data
+Remarks:			Start Testing EDMA Callback1 function
+***************************************************************************************************/
+static void callback1(unsigned lch, u16 ch_status, void *data)
+{
+	switch(ch_status) 
+	{
+	case DMA_COMPLETE:
+		//irqraised1 = 1;
+		DMA_PRINTK ("\n Callback 1: Channel %d status is: %u\n",lch, ch_status);
+		enqueue_dma();
+		break;
+	case DMA_CC_ERROR:
+		//irqraised1 = -1;
+		DMA_PRINTK ("\nFrom Callback 1: DMA_CC_ERROR occured on Channel %d\n", lch);
+		break;
+	default:
+		break;
+	}
+}
+
+static void dma_request()
+{
+	struct edmacc_param edma_par;	
+	int result=0;
+	//Работает кусок pcm/dma-request выделяет нужные каналы.		
+	result = edma_alloc_channel (0xa, callback1, NULL, 0x2);
+		
+	printk("DMA_CHANNEL=result=%d\n\r",result);
+		
+	// Request a Link Channel 
+	result = edma_alloc_slot (EDMA_CTLR(0xa), EDMA_SLOT_ANY);
+	printk("SLOT=result=%d\n\r",result);
+		
+	edma_read_slot(0xbf, &edma_par);
+	edma_par.opt |= TCINTEN |EDMA_TCC(EDMA_CHAN_SLOT(0xa));
+	edma_par.link_bcntrld = EDMA_CHAN_SLOT(0xbf) << 5;
+	edma_write_slot(0xbf, &edma_par);
+		
+}
+
+static void dma_prepare()
+{
+	struct edmacc_param edma_par;
+	printk("Kosta_DMA_PREPARE\n\r");
+	
+	enqueue_dma();
+	
+	edma_par.opt |= TCINTEN |EDMA_TCC(EDMA_CHAN_SLOT(0xa));
+    edma_par.link_bcntrld = EDMA_CHAN_SLOT(0xbf) << 5;
+	edma_read_slot( 0xbf/*prtd->asp_link[0]*/,&edma_par /* &prtd->asp_params*/);
+	edma_write_slot(0xa/*prtd->asp_channel*/, &edma_par/*&prtd->asp_params*/);	
+
+	enqueue_dma();
+
+}
+
+
+static void dma_trigger()
+{
+    int ret=0;
+      
+    ret=edma_start(0xa/*prtd->asp_channel*/);
+	if (ret != 0) 
+	{
+	printk ("edma3__dma: davinci_start_dma failed \n");
+	}
+    else
+    {        
+    printk("DMA_START=OK =0x%x\n\r",ret);    
+    }
+	
+}
+
+
 
 /**************************************************************************************************
 Syntax:      	    bool Init_Arm_McASP_interface();
@@ -308,6 +461,8 @@ bool Init_Arm_McASP_interface()
 	struct snd_pcm_substream *rsubstream=0;
 	
 	int i;
+	//struct snd_dma_buffer *dmab=NULL;
+	size_t i_size=0xfa00;  //64000
 	
 	//struct snd_pcm_ops operation;
 	//struct snd_pcm_ops  ops;
@@ -381,21 +536,41 @@ bool Init_Arm_McASP_interface()
 	 davinci_mcasp_hw_params(rsubstream,params,cpu_dai);
 	 
 	 
-	 
+     ppcm = &pcm_hardware_playback;
+     printk("ppcm->formats=0x%x,ppcm->info=0x%x,ppcm->rates=0x%x,\n\r",ppcm->formats,ppcm->info,ppcm->rates); 
+     dma_request();
+     
+     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
-	 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	 
-	 
-	 
-	 
-	 
-	 
-	 davinci_pcm_open(rsubstream);  //вся инициализацтя проходит как надо
+	 //davinci_pcm_open(rsubstream);  //вся инициализацтя проходит как надо
 	 //snd_pcm_open_substream(pcm, 0x0,file,&rsubstream);   //Открываем ПОТОК на буфер не нужно работаем без этого пока.
-	
+	 dmab_slic = kzalloc(sizeof(*dmab_slic), GFP_KERNEL);
+	 if (! dmab_slic)
+	 {
+	 	printk("?ERROR ALLOCATE DMAB?\n\r");
+	 	return -ENOMEM;
+	 }
+
+	 if (snd_dma_alloc_pages(0x2,pcm->card->dev,i_size, dmab_slic) < 0) 
+	 {
+	 	printk("?ERROR ALLOCATE snd_dma_alloc_pages?\n\r");
+	 	kfree(dmab_slic);
+	     return -ENOMEM;
+	 }
+
+	 printk("preallocate_dma_buffer:cpu_viewed_area=%p,device_viewed_addr=%p,size=%d\n", (void *) dmab_slic->area, (void *)dmab_slic->addr, i_size);
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
 	 ////////////////////////////////////делаем  большую заглушку//////////////////////////////	 
 	// snd_pcm_attach_substream(pcm, 0x0,file,&rsubstream); 
 	 ////////////////////////////////////////////////////
@@ -493,8 +668,11 @@ bool Init_Arm_McASP_interface()
 	if (platform->driver->ops && platform->driver->ops->prepare) 
 	{
 		printk("<<<++++platform->driver->ops++++>>>\n\r+");
-		ret = platform->driver->ops->prepare(rsubstream);
-	
+		
+		  
+		 dma_prepare();
+		//ret = platform->driver->ops->prepare(rsubstream);
+	     
 	
 		
 		if (ret < 0) 
@@ -539,6 +717,9 @@ bool Init_Arm_McASP_interface()
 	}
 
 
+	
+	
+	
 	if (rsubstream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 	{
 	snd_soc_dapm_stream_event(rtd,codec_dai->driver->playback.stream_name,SND_SOC_DAPM_STREAM_START);
@@ -550,9 +731,10 @@ bool Init_Arm_McASP_interface()
 	snd_soc_dai_digital_mute(codec_dai, 0);
 
 	
+	
     /////////////////////////////TRIGGER_FUNCTIONS////////////////////////////////	
-	
-	
+	/////////////////////////////TRIGGER_FUNCTIONS////////////////////////////////	
+	/////////////////////////////TRIGGER_FUNCTIONS////////////////////////////////	
 	
 	if (codec_dai->driver->ops->trigger) 
 	{		
@@ -565,60 +747,45 @@ bool Init_Arm_McASP_interface()
 		}
 	}
 	
-	
 	if (platform->driver->ops && platform->driver->ops->trigger) 
 	{
-	printk("<<++++platform->driver->ops->trigger+++>>\n\r+");
-	ret = platform->driver->ops->trigger(rsubstream,0x1 /*cmd*/);
-	if (ret < 0)
-	return ret;
+		///!!!!!!!
+		
+		printk("<<++++platform->driver->ops->trigger+++>>\n\r+");
+		dma_trigger();
+		//davinci_pcm_trigger(rsubstream,0x1);
+		//ret = platform->driver->ops->trigger(rsubstream,0x1 /*cmd*/);
+		
+		/*
+		if (ret < 0)
+		{
+		  return ret;
+		} */
+    
 	}
 
 	
+  if (cpu_dai->driver->ops->trigger)
+  {
+	   //!!!!!!!!!
+	   printk("<<++++cpu_dai->driver->ops->trigger+++>>\n\r+");
+	   davinci_mcasp_trigger(rsubstream,0x1,cpu_dai); 
+	   
+	   //ret = cpu_dai->driver->ops->trigger(rsubstream,0x1 /*cmd*/, cpu_dai);
+	  /*
+	   if (ret < 0)
+	   {
+	   return ret;
+	   } 
+        */
+   }
 	
-	if (cpu_dai->driver->ops->trigger)
-	{
-	printk("<<++++cpu_dai->driver->ops->trigger+++>>\n\r+");
-	ret = cpu_dai->driver->ops->trigger(rsubstream,0x1 /*cmd*/, cpu_dai);
-	if (ret < 0)
-	return ret;
-	}
 	
-	
+  
+  
+  
 //#endif	
-	
-
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+		
 	//soc_pcm_trigger(rsubstream,0x1);
 	//pstr->substream_opened++;
 	//soc_pcm_prepare(rsubstream);

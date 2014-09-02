@@ -20,6 +20,8 @@
 #include <linux/mm.h>
 #include <linux/dma-mapping.h>
 #include <linux/kernel.h>
+#include <linux/slab.h>
+#include <linux/vmalloc.h>
 #include <asm/dma.h>
 #include "memory.h"
 #include <mach/hardware.h>
@@ -171,7 +173,8 @@ static int ccnt = 8;
 
 
 //
-struct snd_dma_buffer buf;
+struct snd_dma_buffer *dmab=NULL;
+
 struct snd_pcm *test_pcm;
 struct snd_soc_dai *test_cpu_dai;
 struct davinci_pcm_dma_params *pa;
@@ -184,8 +187,8 @@ struct davinci_runtime_data *prtd;
 //Вот он главный файл для работы с AUDIO McASP драйвером
 struct davinci_audio_dev *audio_dev;
 
-
-size_t size=0x8000;//0x20000; //32768  //131072 byte
+size_t size=0xfa00;  //64000
+//size_t size=0x8000;//0x20000; //32768  //131072 byte
 /*****************************************************************************/
 /*	Extern function Defenition						                 		*/
 /*****************************************************************************/
@@ -294,6 +297,7 @@ int modes = 2;
 int i=0,j=0;
 
 
+
 //unsigned char *area;
 //dma_addr_t addr=0;
 //size_t size=0x20000; //131072 byte
@@ -306,19 +310,27 @@ mcasp=omap_device_get_by_hwmod_name(oh_name);
 */
 
 //Вычищаем буфер
-memset(&buf,0x0000,sizeof(buf));
+memset(&dmab,0x0000,sizeof(dmab));
 memset(&test_pcm,0x0000,sizeof(test_pcm));
 test_pcm  = get_pcm();
 
 
+dmab = kzalloc(sizeof(*dmab), GFP_KERNEL);
+if (! dmab)
+{
+	printk("?ERROR ALLOCATE DMAB?\n\r");
+	return -ENOMEM;
+}
 
-buf.dev.type=SNDRV_DMA_TYPE_DEV; 
-buf.dev.dev = test_pcm->card->dev;
-buf.private_data = NULL;
-buf.area = dma_alloc_writecombine(test_pcm->card->dev, size,&buf.addr, GFP_KERNEL);
-buf.bytes = size;
+if (snd_dma_alloc_pages(0x2,test_pcm->card->dev,size, dmab) < 0) 
+{
+	printk("?ERROR ALLOCATE snd_dma_alloc_pages?\n\r");
+	kfree(dmab);
+    return -ENOMEM;
+}
 
-printk("preallocate_dma_buffer:cpu_viewed_area=%p,device_viewed_addr=%p,size=%d\n", (void *) buf.area, (void *) buf.addr, size);
+printk("preallocate_dma_buffer:cpu_viewed_area=%p,device_viewed_addr=%p,size=%d\n", (void *) dmab->area, (void *)dmab->addr, size);
+
 
 
 test_cpu_dai=get_cpu_dai();
@@ -332,16 +344,14 @@ if(!audio_dev)
 
 test_cpu_dai->playback_dma_data=audio_dev->dma_params;
 //printk("mcasp_audio_dai:audio_dev->=0x%x',audio_dev->=0x%x\n\r",audio_dev->dma_params,audio_dev->sample_rate);
-/*
-printk("test_cpu_dai->name='%s',test_cpu_dai->playback_dma_data=0x%x\n\r",test_cpu_dai->name,test_cpu_dai->playback_dma_data);
-*/
+//printk("test_cpu_dai->name='%s',test_cpu_dai->playback_dma_data=0x%x\n\r",test_cpu_dai->name,test_cpu_dai->playback_dma_data);
 
 pa=test_cpu_dai->playback_dma_data;
-if (!pa){
+if (!pa)
+{
 	printk("ERROR!\n\r"); 
 }
 	
-
 //printk("pcm_dma_params:pa->acnt=%p,pa->channel=%p, pa->sram_size=%d\n", (void *) pa->dma_addr, (void *) pa->channel, (void *) pa->sram_size);
 ppcm = &pcm_hardware_playback;
 
@@ -392,7 +402,7 @@ if (!dmabufdest1)
 
 
 
-	 result = edma3_memtomemcpytest_dma(acnt, bcnt, ccnt, i, j);
+	 //result = edma3_memtomemcpytest_dma(acnt, bcnt, ccnt, i, j);
 	
 //	}
 	 	
@@ -1096,9 +1106,9 @@ static int test_edma_function_end()
 	printk("davinci_pcm: preallocate_dma_buffer:cpu_viewed_area=%p,device_viewed_addr=%p,size=%d\n", (void *) buf.area, (void *) buf.addr, size);
 	*/
 	
-	//dma_free_coherent(test_pcm->card->dev, size, buf.area, buf.addr);
-	  dma_free_writecombine(test_pcm->card->dev, size, buf.area, buf.addr);
-	  buf.area=0;
+	 //dma_free_coherent(test_pcm->card->dev, size, buf->, buf.addr);
+	    dma_free_writecombine(test_pcm->card->dev, size, dmab->area, dmab->addr);
+	    dmab->area=0;
 	
 	
 	
