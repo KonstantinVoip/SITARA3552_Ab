@@ -123,7 +123,7 @@ static struct snd_pcm_hardware pcm_hardware_capture = {
 
 
 
-extern struct snd_pcm     *get_pcm();
+//extern struct snd_pcm     *get_pcm();
 extern struct snd_soc_dai *get_cpu_dai();
 
 
@@ -312,7 +312,7 @@ mcasp=omap_device_get_by_hwmod_name(oh_name);
 //Вычищаем буфер
 memset(&dmab,0x0000,sizeof(dmab));
 memset(&test_pcm,0x0000,sizeof(test_pcm));
-test_pcm  = get_pcm();
+//test_pcm  = get_pcm();
 
 
 dmab = kzalloc(sizeof(*dmab), GFP_KERNEL);

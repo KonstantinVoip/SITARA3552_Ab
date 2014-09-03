@@ -205,12 +205,13 @@ bool ret=0;
    
   
     ret=Init_Arm_McASP_interface();
-	if(ret==0)
+	
+    /*
+    if(ret==0)
 	{
 		printk("?Error Init McASP DEvice?\n\r");  
 	}
-   
-     
+    */
 	  
 	 
 
