@@ -83,11 +83,7 @@ bool Init_Arm_CPSW_MAC_Ethernet()
 	cpsw1_dev=cpsw_get_device_by_name(ifname1);
 	if(!cpsw1_dev){printk("No Device Found %s\n\r",ifname1);}
 
-	
 	//Conflict IP_ADDR_in  seti?
-	
-	
-	
 	/*
 	for(i=0;i<=10;i++)
 	{
@@ -244,10 +240,6 @@ void send_packet_buf_to_cpsw1(u16 buf[758],u16 len)
 	}
 	
 }
-
-
-
-
 
 /**************************************************************************************************
 Syntax:      	    static struct net_device *cpsw_get_device_by_name(const char *ifname)

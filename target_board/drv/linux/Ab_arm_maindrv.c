@@ -74,9 +74,30 @@ static int Init_Net_Filter_Hook_ARP();
 struct nf_hook_ops bundle;
 struct nf_hook_ops arp_bundle;
 
+/**********************IP AND UDP DEFENITION******************/
+//IP PRoTOCOL VALUE
+#define ICMP 0x1
+#define IPv4 0x4
+#define TCP  0x6
+#define UDP  0x11
+
+#define BROADCAST_FRAME     0xFFFF
+#define ETHERNET_HEADER_LEGTH  14 //14 bait  (112  bit)
+#define IPv4_HEADER_LENGTH     20 //20 bait  (160  bit)
+#define UDP_HEADER_LENGTH      8  //8 bait   (64   bit) 
+#define RTP_HEADER_LENGTH      12 //12 bait  (96   bit)
 
 
 
+
+//Порт назначения UDP 
+int udp_dest_port_LE=0x1027;  //ПОРТ 10000 туда кидаю  данные ffmpeg 
+
+
+#define RTP_SOURCE_TRAFFIC_LE   0x0182A8C0   //192.168.130.1  Little  Endian
+#define RTP_SOURCE_TRAFFIC_BE   0xC0A88201   //192.168.130.1  Big     Endian         
+#define SITARA_cpsw0_IP_ADDR     0xC0A9827C  //192.168.130.124
+#define SITARA_cpsw1_IP_ADDR     0x0A000001  //10.0.0.1
 
 /**************************************************************************************************
 Syntax:      	    unsigned int Hook_Func_ARp
@@ -92,6 +113,10 @@ unsigned int Hook_Func_ARP(uint hooknum,
 
 {
 //printk("+++++++++++++ARP+++++++++++++\n\r");
+
+	
+	
+	
 return NF_ACCEPT;	
 }
 
@@ -110,25 +135,60 @@ unsigned int Hook_Func(uint hooknum,
                   int (*okfn)(struct sk_buff *))
 {
 
-    /* Указатель на структуру заголовка протокола eth в пакете */
+     int my_l_dest_udp_port=0;
+	 static int rtp_count=0;
+	 int i=0;
+	
+	
+	 /* Указатель на структуру заголовка протокола eth в пакете */
 	struct ethhdr *eth;
     /* Указатель на структуру заголовка протокола ip в пакете */
 	struct iphdr *ip;
-	/*Указатель на UDP заголовок*/
-	//struct udphdr *udph;
-		/*указатель на icmp сообщение*/
-	//struct icmphdr *icmp;
-	
-	
+
 	//Фильтрация 2 го уровня по ETH заголовку
 	eth=(struct ethhdr *)skb_mac_header(skb);
 	 //Фильтрация 3 го уровня по IP
 	ip = (struct iphdr *)skb_network_header(skb);
 
-	//printk("+++++++++++++IP++++++++++=%x\n\r",(uint)ip->saddr);
-	//Фильтр для пакетов от НМС3 и к НМС3  нужн подумать как ручками не прописывать может лучше сделать порт 18000;
+	//printk("++HOOK_IP|ip_saadr=0%x|ip_daadr=0x%x++++++\n\r",(uint)ip->saddr,(uint)ip->daddr);
+
+	 /*Пустой UDP пакет отбрасываю*/
+	 if((skb->mac_len+skb->len)==42) 
+	 {
+	 printk("bad input packet size =%d\n\r",skb->mac_len+skb->len);
+	 return NF_DROP;
+	 } 
 	
+	 //Фильтр пакетов к моему IP пока так сделаю;
+	 //Источник RTP пакетов ко мне для обработки на порт назначения UDP  = 10000  тогда обрабатываю
+	 if (((uint)ip->saddr==RTP_SOURCE_TRAFFIC_LE))
+	 {
+		  memcpy(&my_l_dest_udp_port,(skb->mac_header)+ETHERNET_HEADER_LEGTH+22,2);
+		  if(my_l_dest_udp_port==udp_dest_port_LE)
+		  {	 
+			 
+			  //Распечатываем Первый Пакет смотрим что внутри у нас твориться
+		     
+			  //Сделаю Завтра 
+           /* 
+			  if(rtp_count==0)
+			  {
+				  for(i=0;i<=(uint)skb->mac_len+(uint)skb->len;i++)
+				  {
+					  
+					  //printk("0x%x|",(skb->mac_header)+i);
+				  }
+				  
+			  }
+			*/  
+			  
+			   //printk("udp_dest=0x%x\n\r",my_l_dest_udp_port);
+			  //printk("++RTP_PACKET_SOURCE_OK++_num=%d|packet_size_bytes=%d\n\r",rtp_count++,(uint)skb->mac_len+(uint)skb->len);  			  
+			    rtp_count++;
+		  }	  
 		
+	 }
+	
 return NF_ACCEPT;	
 }	
 
@@ -153,7 +213,7 @@ static int Init_Net_Filter_HooK_IP()
     /* Указываем семейство протоколов */
        bundle.pf = NFPROTO_IPV4;         
     /* Указываем, в каком месте будет срабатывать функция */
-       bundle.hooknum = NF_INET_PRE_ROUTING;
+       bundle.hooknum =NF_INET_PRE_ROUTING;
     /* Выставляем самый высокий приоритет для функции */
        bundle.priority = NF_IP_PRI_FIRST;
     /* Регистрируем */
@@ -204,7 +264,7 @@ bool ret=0;
 	
    
   
-    ret=Init_Arm_McASP_interface();
+    //ret=Init_Arm_McASP_interface();
 	
     /*
     if(ret==0)
@@ -213,51 +273,30 @@ bool ret=0;
 	}
     */
 	  
-	 
-
-   
+	
   // ret= Start_Test_Sitara_arm_func();
 
      
    
    
 
-#if 0
-
-
+//#if 0
 
     ret=Init_Net_Filter_HooK_IP();
     ret=Init_Net_Filter_Hook_ARP();  	
-    
-
-    
-    
-    
-    
-    
+ 
     ret=Init_Arm_CPSW_MAC_Ethernet();    //Init ARM CPSW  Ethernet  Interface Driver
     if(ret==0)
     {  	
     printk("?Error Init Ethernet Module?\n\r");	
     }
     
-
-    
-    
-   
-    
-    /*Start Testing Function for ARM  processor*/
-    //Start_Test_Sitara_arm_func();
-    
-
-      
-      
+    /*Start Testing Function for ARM  processor*/    
     //ret=Init_Arm_AIC3106_low_level_codec_i2c();
-   
     
     printk("!!!Ab_arm_init_module_I-tdm() Start_OK++!!!\n");
     
-#endif  
+//#endif  
     
    
 return 0;
@@ -282,8 +321,8 @@ Return Value:	    none
 void Ab_arm_cleanup_module(void)
 {	
     printk("Ab_arm_exit_module() I-TDM called\n");
-  //  nf_unregister_hook(&bundle);      
-  //  nf_unregister_hook(&arp_bundle);
+    nf_unregister_hook(&bundle);      
+    nf_unregister_hook(&arp_bundle);
 }
 
 /*****************************************************************************/

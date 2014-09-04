@@ -28,6 +28,11 @@ bool Init_Arm_PHY_Transiver();
 //Start Transmit  Function
 void send_packet_buf_to_cpsw0(u16 buf[758],u16 len);
 void send_packet_buf_to_cpsw1(u16 buf[758],u16 len);
+//GET packet form  ethernet  Device
+
+
+
+
 
 
 
