@@ -8,33 +8,54 @@
 *
 * Author      : Konstantin Shiluaev..
 *
-******************************************************************************
+******************************************************************************/
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/device.h>
+#include <linux/slab.h>
+#include <linux/delay.h>
+#include <linux/io.h>
+#include <linux/pm_runtime.h>
+
+#include <sound/core.h>
+#include <sound/pcm.h>
+#include <sound/pcm_params.h>
+#include <sound/initval.h>
+#include <sound/soc.h>
+#include <sound/soc-dapm.h>
+
+#include "davinci-pcm.h"
+#include "davinci-mcasp.h"
 
 
 
-
-/*****************************************************************************/
-/*	COMMON CONFIGURATION						     */
-/*****************************************************************************/
-
-////
 
 /*****************************************************************************/
 /* LOCAL INCLUDES							     */
 /*****************************************************************************/
 #include "include/Ab_arm_dmadrv.h"
+#include "include/Ab_arm_TestBuf.h"
+#include "edma.h"
 
 
 
+/*****************************************************************************/
+/*	GLOBAL  DEFENITION						     				 			 */
+/*****************************************************************************/
+struct snd_dma_buffer    *dmab_slic=NULL;
+static void enqueue_dma();
+static void dma_request();
+static void dma_prepare();
+static void dma_trigger();
 
 
 /*****************************************************************************/
 /*	EXTERN DEFENITION													     */
 /*****************************************************************************/
-extern struct snd_pcm *get_pcm();
-
-
-
+extern struct snd_pcm           *get_pcm();
+extern struct snd_soc_dai       *get_codec_dai();  
+extern struct snd_soc_dai       *get_cpu_dai();
+extern int  davinci_mcasp_trigger(struct snd_pcm_substream *substream,int cmd, struct snd_soc_dai *cpu_dai);
 
 /*****************************************************************************/
 /*	DEFINE DEFINITIONS													     */
@@ -54,10 +75,21 @@ Return Value:	    1  =>  Success  ,0 => Failure
 ***************************************************************************************************/
 bool Init_Arm_EDMA_interface()
 {
-
-	 
+    struct snd_soc_dai 	     *l_codec_dai=0;            //hardware_codec TLV_aic interface
+    struct snd_pcm 			 *l_pcm=0;                  //pcm codec structure
+    struct snd_pcm_substream *l_rsubstream=0;           //substream Codec structure
+    struct snd_soc_dai 	     *l_cpu_dai=0; 
+    size_t i_size=0xfa00;     //64000
     //Это моя рабочая часть работает нужно  обновление буфера в  реальном времени подсовывать буфер в реальном времени
-/*
+    
+     
+    l_codec_dai=get_codec_dai(); 
+    l_pcm      =get_pcm();
+    l_cpu_dai  =get_cpu_dai();
+    		
+    memset(&l_rsubstream,0x0000,sizeof(l_rsubstream)); 		
+    		
+    
 	 dma_request();
 	 dmab_slic = kzalloc(sizeof(*dmab_slic), GFP_KERNEL);
 	 if (! dmab_slic)
@@ -66,7 +98,7 @@ bool Init_Arm_EDMA_interface()
 	 	return -ENOMEM;
 	 }
 
-	 if (snd_dma_alloc_pages(0x2,pcm->card->dev,i_size, dmab_slic) < 0) 
+	 if (snd_dma_alloc_pages(0x2,l_pcm->card->dev,i_size, dmab_slic) < 0) 
 	 {
 	 	printk("?ERROR ALLOCATE snd_dma_alloc_pages?\n\r");
 	 	kfree(dmab_slic);
@@ -76,11 +108,11 @@ bool Init_Arm_EDMA_interface()
 	 printk("preallocate_dma_buffer:cpu_viewed_area=%p,device_viewed_addr=%p,size=%d\n", (void *) dmab_slic->area, (void *)dmab_slic->addr, i_size);
      ////////////////////PREPARE   FUNCTIONS////////////////////////////	
 	 dma_prepare();
-	 snd_soc_dapm_stream_event(pcm->private_data,codec_dai->driver->playback.stream_name,SND_SOC_DAPM_STREAM_START);
-	 snd_soc_dai_digital_mute(codec_dai, 0);
+	 snd_soc_dapm_stream_event(l_pcm->private_data,l_codec_dai->driver->playback.stream_name,SND_SOC_DAPM_STREAM_START);
+	 snd_soc_dai_digital_mute(l_codec_dai, 0);
 	 dma_trigger();
-	 davinci_mcasp_trigger(rsubstream,0x1,cpu_dai); 
-*/
+	 davinci_mcasp_trigger(l_rsubstream,0x1,l_cpu_dai); 
+
 
 	return 1;
 }
@@ -144,10 +176,10 @@ static void enqueue_dma()
 	dma_src=dmab_slic->addr;
 	
     mcasp_count=mcasp_count+1;
-	period_size = 0xfa0;                  	  //snd_pcm_lib_period_bytes(substream);
-	dma_offset  = mcasp_count*period_size; // prtd->period * period_size;
-	dma_pos     = dma_src+dma_offset;  // runtime->dma_addr+ dma_offset;
-	fifo_level  = 0x20;			  //prtd->params->fifo_level;
+	period_size = 0xfa0;                  	        //snd_pcm_lib_period_bytes(substream);
+	dma_offset  = mcasp_count*period_size;          //prtd->period * period_size;
+	dma_pos     = dma_src+dma_offset;               //runtime->dma_addr+ dma_offset;
+	fifo_level  = 0x20;			                    //prtd->params->fifo_level;
                  
 	//mcasp_count=mcasp_count+1;
 	//printk("runtime->dma_addr=0x%x,prtd->period=0x%x\n\r",prtd->period,runtime->dma_addr);
@@ -211,11 +243,11 @@ static void dma_request()
 	//Работает кусок pcm/dma-request выделяет нужные каналы.		
 	result = edma_alloc_channel (0xa, callback1, NULL, 0x2);
 		
-	printk("DMA_CHANNEL=result=%d\n\r",result);
+	printk("Ab_Arm_DMA_CHANNEL=result=%d\n\r",result);
 		
 	// Request a Link Channel 
 	result = edma_alloc_slot (EDMA_CTLR(0xa), EDMA_SLOT_ANY);
-	printk("SLOT=result=%d\n\r",result);
+	printk("Ab_Arm_SLOT=result=%d\n\r",result);
 		
 	edma_read_slot(0xbf, &edma_par);
 	edma_par.opt |= TCINTEN |EDMA_TCC(EDMA_CHAN_SLOT(0xa));
@@ -229,7 +261,7 @@ static void dma_request()
 static void dma_prepare()
 {
 	struct edmacc_param edma_par;
-	printk("Kosta_DMA_PREPARE\n\r");
+	printk("Ab_ARM_DMA_PREPARE\n\r");
 	
 	enqueue_dma();
 	

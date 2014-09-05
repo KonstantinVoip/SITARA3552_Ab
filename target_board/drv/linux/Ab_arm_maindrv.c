@@ -59,6 +59,7 @@ GENERAL NOTES
 #include "include/Ab_arm_test_drv_file.h"
 #include "include/Ab_arm_ethernetdrv.h"
 #include "include/Ab_arm_slicdrv.h"
+#include "include/Ab_arm_dmadrv.h"
 
 /*****************************************************************************/
 /*Global Define Defenition static function 							    				 */
@@ -166,25 +167,13 @@ unsigned int Hook_Func(uint hooknum,
 		  memcpy(&my_l_dest_udp_port,(skb->mac_header)+ETHERNET_HEADER_LEGTH+22,2);
 		  if(my_l_dest_udp_port==udp_dest_port_LE)
 		  {	 
-			 
-			  //Распечатываем Первый Пакет смотрим что внутри у нас твориться
-		     
-			  //Сделаю Завтра 
-           /* 
-			  if(rtp_count==0)
-			  {
-				  for(i=0;i<=(uint)skb->mac_len+(uint)skb->len;i++)
-				  {
-					  
-					  //printk("0x%x|",(skb->mac_header)+i);
-				  }
-				  
-			  }
-			*/  
-			  
-			   //printk("udp_dest=0x%x\n\r",my_l_dest_udp_port);
-			  //printk("++RTP_PACKET_SOURCE_OK++_num=%d|packet_size_bytes=%d\n\r",rtp_count++,(uint)skb->mac_len+(uint)skb->len);  			  
+			    //Пакет пришёл мне обрабатываю отправляю его дальше на обработку функция отправки пакета на обработку
+			      get_rtp_prepare_packet_handler(skb->mac_header,(uint)skb->mac_len+(uint)skb->len);
+			    //printk("udp_dest=0x%x\n\r",my_l_dest_udp_port);
+			    //printk("++RTP_PACKET_SOURCE_OK++_num=%d|packet_size_bytes=%d\n\r",rtp_count++,(uint)skb->mac_len+(uint)skb->len);  			  
 			    rtp_count++;
+			    
+		   return NF_DROP;   //сбрасываю пакет он никому больше не нужен кроме меня
 		  }	  
 		
 	 }
@@ -258,14 +247,19 @@ Return Value:	    1  =>  Success  ,-1 => Failure
 int Ab_arm_init_module(void)
 {
 bool ret=0;
-	
+     
 
-   /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/
-	
-   
-  
-    //ret=Init_Arm_McASP_interface();
-	
+        /*Init Low Level Hardware  Appart functon*/
+ //       Init_Arm_AIC3106_low_level_codec_i2c();
+ //       Init_Arm_McASP_interface();
+         /*Init and Start EDMA  Sitara Interface*/
+ //       Init_Arm_EDMA_interface();
+
+
+
+        
+        
+        
     /*
     if(ret==0)
 	{
@@ -278,7 +272,7 @@ bool ret=0;
 
      
    
-   
+   /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/    
 
 //#if 0
 
@@ -291,8 +285,6 @@ bool ret=0;
     printk("?Error Init Ethernet Module?\n\r");	
     }
     
-    /*Start Testing Function for ARM  processor*/    
-    //ret=Init_Arm_AIC3106_low_level_codec_i2c();
     
     printk("!!!Ab_arm_init_module_I-tdm() Start_OK++!!!\n");
     
@@ -320,9 +312,16 @@ Return Value:	    none
 ***************************************************************************************************/
 void Ab_arm_cleanup_module(void)
 {	
-    printk("Ab_arm_exit_module() I-TDM called\n");
+//  printk("Ab_arm_exit_module() I-TDM called\n");
+  
+    
+    
     nf_unregister_hook(&bundle);      
     nf_unregister_hook(&arp_bundle);
+
+
+//  printk("OK  EXIT MODULE\n\r") ;
+    
 }
 
 /*****************************************************************************/

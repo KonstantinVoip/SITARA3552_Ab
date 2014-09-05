@@ -29,7 +29,7 @@ bool Init_Arm_PHY_Transiver();
 void send_packet_buf_to_cpsw0(u16 buf[758],u16 len);
 void send_packet_buf_to_cpsw1(u16 buf[758],u16 len);
 //GET packet form  ethernet  Device
-
+int get_rtp_prepare_packet_handler(unsigned char *packet,int packet_len);
 
 
 

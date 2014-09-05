@@ -44,12 +44,13 @@ MACH-OMAP2     ->>>for Sitara Processor AM335x
 #include "davinci-mcasp.h"
 
 
-#include "include/Ab_arm_TestBuf.h"
+
 
 
 /*****************************************************************************/
 /*Local INCLUDES							     */
 /*****************************************************************************/
+//#include "include/Ab_arm_TestBuf.h"
 #include "include/Ab_arm_slicdrv.h"
 
 
@@ -112,12 +113,16 @@ extern int snd_soc_dapm_stream_event(struct snd_soc_pcm_runtime *rtd,const char 
 
 
 //extern void  snd_soc_dapm_stream_event(rtd,codec_dai->driver->playback.stream_name,SND_SOC_DAPM_STREAM_START);
-struct snd_dma_buffer    *dmab_slic=NULL;
+//struct snd_dma_buffer    *dmab_slic=NULL;
+
+
+
+/*
 struct snd_soc_dai 	     *cpu_dai;              //mcasp Sitara interface
 struct snd_soc_dai 	     *codec_dai;            //hardware_codec TLV_aic interface
 struct snd_soc_codec     *codec;                //codec interface
 struct snd_pcm 			 *pcm;                  //pcm codec structure
-
+*/
 
 
 
@@ -134,38 +139,25 @@ bool Init_Arm_McASP_interface()
 	struct snd_pcm_hw_params *params=0;
 	struct snd_pcm_substream *rsubstream=0;
 	
-	int i;
-	size_t i_size=0xfa00;  //64000
-	
-	struct snd_pcm_str * pstr;
-	struct snd_pcm_runtime *runtime;
-	size_t size;
-	
-	struct snd_pcm_ops  *hardware_ops;
-	struct snd_soc_pcm_runtime *rtd; 
-	struct snd_soc_platform *platform;
-	
 	memset(&rsubstream,0x0000,sizeof(rsubstream));
 	memset(&params,0x0000,sizeof(params));
 	
-	int ret = 0;
- 
 	//Работает УРА наш кодек
-	pcm  = get_pcm();
-	codec_dai=get_codec_dai();
-	cpu_dai=get_cpu_dai();
-	codec=get_codec();
+	davinci_mcasp_startup(rsubstream,get_cpu_dai());           
+	davinci_mcasp_set_dai_fmt(get_cpu_dai(),0x1305);           
+	davinci_mcasp_hw_params(rsubstream,params,get_cpu_dai());
 	
+	
+	
+	
+	/*
+	davinci_mcasp_startup(rsubstream,cpu_dai);           
+	davinci_mcasp_set_dai_fmt(cpu_dai,0x1305);           
+	davinci_mcasp_hw_params(rsubstream,params,cpu_dai);
+	*/ 
 
-	davinci_mcasp_startup(rsubstream,cpu_dai);           //
-	davinci_mcasp_set_dai_fmt(cpu_dai,0x1305);           //
-	davinci_mcasp_hw_params(rsubstream,params,cpu_dai);  //
-	 
-	 
-	
+return 1;	
 }
-
-
 
 
 /**************************************************************************************************
@@ -176,13 +168,29 @@ Return Value:	    1  =>  Success  ,0 => Failure
 ***************************************************************************************************/
 bool Init_Arm_AIC3106_low_level_codec_i2c()
 {
-		
+	
+	//pcm  = get_pcm();
+	//codec_dai=get_codec_dai();
+	//cpu_dai=get_cpu_dai();
+	//codec=get_codec();
 	//printk("CODEC->Name='%s'\n\r",codec_dai->name);
-	 //Setup наш аппаратный кодек  кодек  TLV.
+	
+	
+	//Setup наш аппаратный кодек  кодек  TLV.
+	aic3x_set_dai_fmt(get_codec_dai(),0x1305);                 //Идёт первая функция 
+	aic3x_set_dai_sysclk(get_codec_dai(),0x0,0x16e3600,0x1);   //Идёт вторая функция
+	aic3x_hw_params (get_codec());                             //Идёт Третья функция
+	aic3x_mute      (get_codec_dai(),0x00);                    //Четвёртая функция  
+	
+	
+	
+	/*
+	//Setup наш аппаратный кодек  кодек  TLV.
 	aic3x_set_dai_fmt(codec_dai,0x1305);                 //Идёт первая функция 
 	aic3x_set_dai_sysclk(codec_dai,0x0,0x16e3600,0x1);   //Идёт вторая функция
 	aic3x_hw_params (codec);                             //Идёт Третья функция
 	aic3x_mute      (codec_dai,0x00);                    //Четвёртая функция  
+    */  
 
 	//printk("+bool Init_Arm_AIC3106_low_level_codec_i2c()+\n\r");		
 
