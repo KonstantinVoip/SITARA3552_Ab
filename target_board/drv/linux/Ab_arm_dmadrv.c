@@ -49,6 +49,16 @@ static void dma_prepare();
 static void dma_trigger();
 
 
+//EDMA GLOBAL Sitara Parameters
+int dma_channel=0;
+int dma_slot=0;
+const char *playback_stream_name="Playback";
+struct snd_pcm 			          *l_pcm=0;                  //pcm codec structure
+
+
+
+
+
 /*****************************************************************************/
 /*	EXTERN DEFENITION													     */
 /*****************************************************************************/
@@ -65,6 +75,24 @@ extern int  davinci_mcasp_trigger(struct snd_pcm_substream *substream,int cmd, s
 #define DMA_FN_OUT printk(KERN_INFO "[%s]: end\n",__FUNCTION__)
 
 
+/**************************************************************************************************
+Syntax:      	    static void callback1(unsigned lch, u16 ch_status, void *data)
+Parameters:     	unsigned lch, u16 ch_status, void *data
+Remarks:			Start Testing EDMA Callback1 function
+***************************************************************************************************/
+static void callback1(unsigned lch, u16 ch_status, void *data)
+{
+
+	//printk("+dma_irq+\n\r");
+	
+	if (unlikely(ch_status != DMA_COMPLETE))
+	{
+		printk("ulikley_DMA_no_complete\n\r");
+		return;
+    }
+	enqueue_dma();
+	
+}
 
 
 /**************************************************************************************************
@@ -76,7 +104,7 @@ Return Value:	    1  =>  Success  ,0 => Failure
 bool Init_Arm_EDMA_interface()
 {
     struct snd_soc_dai 	     *l_codec_dai=0;            //hardware_codec TLV_aic interface
-    struct snd_pcm 			 *l_pcm=0;                  //pcm codec structure
+   
     struct snd_pcm_substream *l_rsubstream=0;           //substream Codec structure
     struct snd_soc_dai 	     *l_cpu_dai=0; 
     size_t i_size=0xfa00;     //64000
@@ -108,7 +136,12 @@ bool Init_Arm_EDMA_interface()
 	 printk("preallocate_dma_buffer:cpu_viewed_area=%p,device_viewed_addr=%p,size=%d\n", (void *) dmab_slic->area, (void *)dmab_slic->addr, i_size);
      ////////////////////PREPARE   FUNCTIONS////////////////////////////	
 	 dma_prepare();
-	 snd_soc_dapm_stream_event(l_pcm->private_data,l_codec_dai->driver->playback.stream_name,SND_SOC_DAPM_STREAM_START);
+	 
+	 
+	 //printk("stream_name='%s'\n\r",l_codec_dai->driver->playback.stream_name);
+	 
+	 
+	 snd_soc_dapm_stream_event(l_pcm->private_data,playback_stream_name,SND_SOC_DAPM_STREAM_START);
 	 snd_soc_dai_digital_mute(l_codec_dai, 0);
 	 dma_trigger();
 	 davinci_mcasp_trigger(l_rsubstream,0x1,l_cpu_dai); 
@@ -117,42 +150,6 @@ bool Init_Arm_EDMA_interface()
 	return 1;
 }
 
-/**************************************************************************************************
-Syntax:      	    static void callback1(unsigned lch, u16 ch_status, void *data)
-Parameters:     	unsigned lch, u16 ch_status, void *data
-Remarks:			Start Testing EDMA Callback1 function
-***************************************************************************************************/
-static void callback1(unsigned lch, u16 ch_status, void *data)
-{
-
-	printk("+dma_irq+\n\r");
-	
-	if (unlikely(ch_status != DMA_COMPLETE))
-	{
-		printk("ulikley_DMA_no_complete\n\r");
-		return;
-    }
-	enqueue_dma();
-	
-
-/*	
-	switch(ch_status) 
-	{
-	case DMA_COMPLETE:
-		//irqraised1 = 1;
-		//DMA_PRINTK ("\n Callback 1: Channel %d status is: %u\n",lch, ch_status);
-		//mdelay(100);
-		enqueue_dma();
-		break;
-	case DMA_CC_ERROR:
-		//irqraised1 = -1;
-		DMA_PRINTK ("\nFrom Callback 1: DMA_CC_ERROR occured on Channel %d\n", lch);
-		break;
-	default:
-		break;
-	}
-*/
-}
 
 
 /*****************************************************************************/
@@ -163,6 +160,8 @@ static void enqueue_dma()
 	dma_addr_t dma_pos;
 	dma_addr_t src, dst;
 	static unsigned int mcasp_count;
+	static unsigned int period_count;
+	
 	unsigned int period_size;
 	unsigned int dma_offset;
 	unsigned int data_type;
@@ -175,12 +174,25 @@ static void enqueue_dma()
 	
 	dma_src=dmab_slic->addr;
 	
+	
+	
     mcasp_count=mcasp_count+1;
-	period_size = 0xfa0;                  	        //snd_pcm_lib_period_bytes(substream);
+	if(mcasp_count==4)
+	{
+	    printk("!!!!!RESET_PERIOD_BUFFER=%d!!!!\n\r",period_count);
+		mcasp_count=0;	
+		period_count++;  
+	}
+    
+    period_size = 0xfa0;                  	        //snd_pcm_lib_period_bytes(substream);
 	dma_offset  = mcasp_count*period_size;          //prtd->period * period_size;
 	dma_pos     = dma_src+dma_offset;               //runtime->dma_addr+ dma_offset;
 	fifo_level  = 0x20;			                    //prtd->params->fifo_level;
-                 
+     
+	
+	
+	printk("DMA_POS=0x%x\n\r",dma_pos);
+	
 	//mcasp_count=mcasp_count+1;
 	//printk("runtime->dma_addr=0x%x,prtd->period=0x%x\n\r",prtd->period,runtime->dma_addr);
 	//printk("+enqueue_dma_=0x%x,dma_pos=0x%x,dma_src=0x%x,dma_offset=0x%x\n\r",mcasp_count,dma_pos,dma_src,dma_offset);
@@ -197,7 +209,50 @@ static void enqueue_dma()
      {	 
 	   count /= fifo_level;
      } 
-     memcpy(0xffd50000,stereo_voice_buffer,0x20000);
+     
+     
+     if(period_count==0)
+     {	 
+     memcpy(0xffd50000,stereo_voice_buffer,32000);
+     }
+ 
+     
+     
+     
+ /*    
+     if(period_count==1)
+     {
+     memcpy(0xffd50000,&stereo_voice_buffer[128000],128000); 	 
+     }
+     if(period_count==1)
+     {
+     memcpy(0xffd50000,&stereo_voice_buffer[128000],128000); 	 
+     }
+     if(period_count==1)
+     {
+     memcpy(0xffd50000,&stereo_voice_buffer[128000],128000); 	 
+     }
+     if(period_count==1)
+     {
+     memcpy(0xffd50000,&stereo_voice_buffer[128000],128000); 	 
+     }
+ */    
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
      
 	 src = dma_pos;
 	 dst = 0x46400000;
@@ -206,30 +261,28 @@ static void enqueue_dma()
 	 src_cidx = data_type * fifo_level;
 	 dst_cidx = 0;
 
-	 printk("SRC=0x%x|src_cidx=0x%x|count=0x%x,dma_offset=0x%x|dma_pos=0x%x\n\r",src,src_cidx,count,dma_offset,dma_pos); 
+	 //printk("SRC=0x%x|src_cidx=0x%x|count=0x%x,dma_offset=0x%x|dma_pos=0x%x\n\r",src,src_cidx,count,dma_offset,dma_pos); 
 	 
 	 acnt = 0x2;
-	 edma_set_src(0xbf, src, INCR, W8BIT);
-	 edma_set_dest(0xbf, dst, INCR, W8BIT);
+	 edma_set_src(dma_slot , src, INCR, W8BIT);
+	 edma_set_dest(dma_slot , dst, INCR, W8BIT);
 
-	 edma_set_src_index(0xbf, src_bidx, src_cidx);
-	 edma_set_dest_index(0xbf, dst_bidx, dst_cidx);
+	 edma_set_src_index(dma_slot , src_bidx, src_cidx);
+	 edma_set_dest_index(dma_slot , dst_bidx, dst_cidx);
 	
 	
 	 if (!fifo_level)
 	 { 
-			edma_set_transfer_params(0xbf, acnt, count, 1, 0,ASYNC);
+			edma_set_transfer_params(dma_slot , acnt, count, 1, 0,ASYNC);
 	 } 
 			
 	 else
 	 {		
-		    edma_set_transfer_params(0xbf, acnt, fifo_level,count, fifo_level,ABSYNC);
+		    edma_set_transfer_params(dma_slot , acnt, fifo_level,count, fifo_level,ABSYNC);
 	 }
 	 
 
 }
-
-
 
 
 
@@ -239,20 +292,19 @@ static void enqueue_dma()
 static void dma_request()
 {
 	struct edmacc_param edma_par;	
-	int result=0;
 	//Работает кусок pcm/dma-request выделяет нужные каналы.		
-	result = edma_alloc_channel (0xa, callback1, NULL, 0x2);
+	dma_channel = edma_alloc_channel (0xa, callback1, NULL, 0x2);
 		
-	printk("Ab_Arm_DMA_CHANNEL=result=%d\n\r",result);
+	printk("Ab_Arm_dma_Cnannel=%d\n\r",dma_channel);
 		
 	// Request a Link Channel 
-	result = edma_alloc_slot (EDMA_CTLR(0xa), EDMA_SLOT_ANY);
-	printk("Ab_Arm_SLOT=result=%d\n\r",result);
+	dma_slot = edma_alloc_slot (EDMA_CTLR(dma_channel), EDMA_SLOT_ANY);
+	printk("Ab_Arm_dma_slot=result=%d\n\r",dma_slot);
 		
-	edma_read_slot(0xbf, &edma_par);
-	edma_par.opt |= TCINTEN |EDMA_TCC(EDMA_CHAN_SLOT(0xa));
-	edma_par.link_bcntrld = EDMA_CHAN_SLOT(0xbf) << 5;
-	edma_write_slot(0xbf, &edma_par);
+	edma_read_slot(dma_slot, &edma_par);
+	edma_par.opt |= TCINTEN |EDMA_TCC(EDMA_CHAN_SLOT(dma_channel));
+	edma_par.link_bcntrld = EDMA_CHAN_SLOT(dma_slot) << 5;
+	edma_write_slot(dma_slot, &edma_par);
 		
 }
 /*****************************************************************************/
@@ -261,15 +313,12 @@ static void dma_request()
 static void dma_prepare()
 {
 	struct edmacc_param edma_par;
-	printk("Ab_ARM_DMA_PREPARE\n\r");
-	
+//	printk("Ab_ARM_DMA_PREPARE\n\r");
 	enqueue_dma();
-	
-	edma_par.opt |= TCINTEN |EDMA_TCC(EDMA_CHAN_SLOT(0xa));
-    edma_par.link_bcntrld = EDMA_CHAN_SLOT(0xbf) << 5;
-	edma_read_slot( 0xbf,&edma_par);
-	edma_write_slot(0xa, &edma_par);	
-
+	edma_par.opt |= TCINTEN |EDMA_TCC(EDMA_CHAN_SLOT(dma_channel));
+    edma_par.link_bcntrld = EDMA_CHAN_SLOT(dma_slot) << 5;
+	edma_read_slot(dma_slot,&edma_par);
+	edma_write_slot(dma_channel, &edma_par);	
 	enqueue_dma();
 
 }
@@ -281,7 +330,7 @@ static void dma_trigger()
 {
     int ret=0;
       
-    ret=edma_start(0xa);
+    ret=edma_start(dma_channel);
 	if (ret != 0) 
 	{
 	printk ("edma3__dma: davinci_start_dma failed \n");
@@ -307,11 +356,23 @@ Return Value:	    1  =>  Success  ,0 => Failure
 ***************************************************************************************************/
 bool Clear_Arm_EDMA_interface()
 {
+     
+	 snd_soc_dapm_stream_event(l_pcm->private_data,playback_stream_name,SND_SOC_DAPM_STREAM_STOP);
+     snd_dma_free_pages(dmab_slic);
+     edma_free_channel(dma_channel);
+     edma_free_slot(dma_slot);
 
-    
-
-
-
+     
+     
+     
+//	 snd_dma_free_pages(dmab_slic);
+//	 edma_free_channel(dma_channel);
+//   edma_free_slot(dma_slot);
+//   snd_soc_dapm_stream_event(l_pcm->private_data,l_codec_dai->driver->playback.stream_name,SND_SOC_DAPM_STREAM_STOP);
+//   dma_free_coherent(test_pcm->card->dev, size, buf->, buf.addr);
+//   dma_free_writecombine(test_pcm->card->dev, size, dmab->area, dmab->addr);
+//   dmab->area=0;
+	
 	return 1;
 }
 

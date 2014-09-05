@@ -250,10 +250,10 @@ bool ret=0;
      
 
         /*Init Low Level Hardware  Appart functon*/
- //       Init_Arm_AIC3106_low_level_codec_i2c();
- //       Init_Arm_McASP_interface();
+        Init_Arm_AIC3106_low_level_codec_i2c();
+        Init_Arm_McASP_interface();
          /*Init and Start EDMA  Sitara Interface*/
- //       Init_Arm_EDMA_interface();
+        Init_Arm_EDMA_interface();
 
 
 
@@ -313,14 +313,15 @@ Return Value:	    none
 void Ab_arm_cleanup_module(void)
 {	
 //  printk("Ab_arm_exit_module() I-TDM called\n");
-  
-    
-    
     nf_unregister_hook(&bundle);      
     nf_unregister_hook(&arp_bundle);
 
 
-//  printk("OK  EXIT MODULE\n\r") ;
+    
+    Clear_Arm_EDMA_interface();
+    
+    
+    printk("OK  EXIT MODULE\n\r") ;
     
 }
 
