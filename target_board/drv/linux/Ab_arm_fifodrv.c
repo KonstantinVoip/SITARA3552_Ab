@@ -1,10 +1,10 @@
 /**********************************************************************************************************************
-*                                        (c) COPYRIGHT by LONIIS.                                             *
+*                                        (c) COPYRIGHT by LO ZNIIS.                                             *
 *                                            All rights reserved.                                                  *
 ***********************************************************************************************************************
-* Module      : mpcdrvmain.c
+* Module      : Ab_arm_fifodrv.c
 *
-* Description : Sitara 3352 linux driver kernel module for ITDM-Driver
+* Description : Sitara 3352 linux driver kernel module for FIFO  BUFFER
 *
 * Author      : Konstantin Shiluaev..
 *
@@ -33,15 +33,6 @@ Remarks:			load the kernel module driver - invoked by insmod.
 Return Value:	    1  =>  Success  ,-1 => Failure
 
 ***************************************************************************************************/
-
-
-
-
-
-
-
-
-
 
 
 

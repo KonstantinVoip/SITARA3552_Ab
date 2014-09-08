@@ -252,7 +252,8 @@ bool ret=0;
         /*Init Low Level Hardware  Appart functon*/
         Init_Arm_AIC3106_low_level_codec_i2c();
         Init_Arm_McASP_interface();
-         /*Init and Start EDMA  Sitara Interface*/
+       
+        /*Init and Start EDMA  Sitara Interface*/
         Init_Arm_EDMA_interface();
 
 
@@ -274,7 +275,7 @@ bool ret=0;
    
    /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/    
 
-//#if 0
+#if 0
 
     ret=Init_Net_Filter_HooK_IP();
     ret=Init_Net_Filter_Hook_ARP();  	
@@ -288,7 +289,7 @@ bool ret=0;
     
     printk("!!!Ab_arm_init_module_I-tdm() Start_OK++!!!\n");
     
-//#endif  
+#endif  
     
    
 return 0;
@@ -313,15 +314,16 @@ Return Value:	    none
 void Ab_arm_cleanup_module(void)
 {	
 //  printk("Ab_arm_exit_module() I-TDM called\n");
-    nf_unregister_hook(&bundle);      
+
+
+#if 0	
+	nf_unregister_hook(&bundle);      
     nf_unregister_hook(&arp_bundle);
-
-
+    Clear_Arm_EDMA_interface();
+#endif
     
     Clear_Arm_EDMA_interface();
-    
-    
-    printk("OK  EXIT MODULE\n\r") ;
+    printk("!OK_CLEAR ALL DATA !\n\r") ;
     
 }
 

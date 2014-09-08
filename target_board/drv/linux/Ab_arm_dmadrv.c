@@ -38,11 +38,19 @@
 #include "edma.h"
 
 
+/*SOUND MUSIC PARAMETERS */
+#define SAMPLE_RATE			0.125	//8000 Hz
+#define PCM_SAMPLE_SIZE		16
+
+#define A_LAW_SAMPLE_SIZE	8
+#define U_LAW_SAMPLE_SIZE	8
+
+
 
 /*****************************************************************************/
-/*	GLOBAL  DEFENITION						     				 			 */
+/*	GLOBAL STATIC DEFENITION						     				 			 */
 /*****************************************************************************/
-struct snd_dma_buffer    *dmab_slic=NULL;
+
 static void enqueue_dma();
 static void dma_request();
 static void dma_prepare();
@@ -53,14 +61,16 @@ static void dma_trigger();
 int dma_channel=0;
 int dma_slot=0;
 const char *playback_stream_name="Playback";
-struct snd_pcm 			          *l_pcm=0;                  //pcm codec structure
-
-
+struct snd_dma_buffer             *dmab_slic=   NULL;
+struct snd_pcm 			          *l_pcm=       NULL;            //pcm codec structure
+struct snd_pcm_substream 		  *l_rsubstream=NULL;            //substream Codec structure
+struct snd_soc_dai 	              *l_cpu_dai=   NULL;            //mcasp codec interface
+struct snd_soc_dai 	              *l_codec_dai= NULL;            //hardware_codec TLV_aic interface
 
 
 
 /*****************************************************************************/
-/*	EXTERN DEFENITION													     */
+/* GLOBAL EXTERN DEFENITION													     */
 /*****************************************************************************/
 extern struct snd_pcm           *get_pcm();
 extern struct snd_soc_dai       *get_codec_dai();  
@@ -73,6 +83,26 @@ extern int  davinci_mcasp_trigger(struct snd_pcm_substream *substream,int cmd, s
 #define DMA_PRINTK(ARGS...)  printk(KERN_INFO "<%s>: ",__FUNCTION__);printk(ARGS)
 #define DMA_FN_IN printk(KERN_INFO "[%s]: start\n", __FUNCTION__)
 #define DMA_FN_OUT printk(KERN_INFO "[%s]: end\n",__FUNCTION__)
+
+
+
+/**************************************************************************************************
+Syntax:      	    static void callback1(unsigned lch, u16 ch_status, void *data)
+Parameters:     	unsigned lch, u16 ch_status, void *data
+Remarks:			Start Testing EDMA Callback1 function
+***************************************************************************************************/
+static inline signed char* get_data_array()
+{
+	return &stereo_voice_buffer[0];
+}
+
+
+
+
+
+
+
+
 
 
 /**************************************************************************************************
@@ -103,11 +133,9 @@ Return Value:	    1  =>  Success  ,0 => Failure
 ***************************************************************************************************/
 bool Init_Arm_EDMA_interface()
 {
-    struct snd_soc_dai 	     *l_codec_dai=0;            //hardware_codec TLV_aic interface
-   
-    struct snd_pcm_substream *l_rsubstream=0;           //substream Codec structure
-    struct snd_soc_dai 	     *l_cpu_dai=0; 
-    size_t i_size=0xfa00;     //64000
+
+  
+    size_t i_size_dma_block_data=0xfa00;     //64000
     //Это моя рабочая часть работает нужно  обновление буфера в  реальном времени подсовывать буфер в реальном времени
     
      
@@ -118,34 +146,32 @@ bool Init_Arm_EDMA_interface()
     memset(&l_rsubstream,0x0000,sizeof(l_rsubstream)); 		
     		
     
-	 dma_request();
-	 dmab_slic = kzalloc(sizeof(*dmab_slic), GFP_KERNEL);
-	 if (! dmab_slic)
-	 {
+	dma_request();
+	dmab_slic = kzalloc(sizeof(*dmab_slic), GFP_KERNEL);
+	if (! dmab_slic)
+	{
 	 	printk("?ERROR ALLOCATE DMAB?\n\r");
 	 	return -ENOMEM;
-	 }
+	}
 
-	 if (snd_dma_alloc_pages(0x2,l_pcm->card->dev,i_size, dmab_slic) < 0) 
-	 {
+	if (snd_dma_alloc_pages(0x2,l_pcm->card->dev,i_size_dma_block_data, dmab_slic) < 0) 
+	{
 	 	printk("?ERROR ALLOCATE snd_dma_alloc_pages?\n\r");
 	 	kfree(dmab_slic);
 	    return -ENOMEM;
 	 }
 
-	 printk("preallocate_dma_buffer:cpu_viewed_area=%p,device_viewed_addr=%p,size=%d\n", (void *) dmab_slic->area, (void *)dmab_slic->addr, i_size);
+	 printk("preallocate_dma_buffer:cpu_viewed_area=0x%x,device_viewed_addr=0x%x,size=%d\n", (void *) dmab_slic->area, (void *)dmab_slic->addr, i_size_dma_block_data);
      ////////////////////PREPARE   FUNCTIONS////////////////////////////	
 	 dma_prepare();
 	 
 	 
 	 //printk("stream_name='%s'\n\r",l_codec_dai->driver->playback.stream_name);
-	 
-	 
 	 snd_soc_dapm_stream_event(l_pcm->private_data,playback_stream_name,SND_SOC_DAPM_STREAM_START);
 	 snd_soc_dai_digital_mute(l_codec_dai, 0);
 	 dma_trigger();
-	 davinci_mcasp_trigger(l_rsubstream,0x1,l_cpu_dai); 
-
+	 davinci_mcasp_trigger(l_rsubstream,SNDRV_PCM_TRIGGER_START,l_cpu_dai); 
+             
 
 	return 1;
 }
@@ -170,17 +196,19 @@ static void enqueue_dma()
 	unsigned short src_bidx, dst_bidx;
 	unsigned short src_cidx, dst_cidx;
 	unsigned int count; 
-	unsigned int dma_src;
+	unsigned int dma_src,dma_area;
 	
+	dma_area=dmab_slic->area;
 	dma_src=dmab_slic->addr;
 	
 	
 	
     mcasp_count=mcasp_count+1;
-	if(mcasp_count==4)
+	if(mcasp_count==PCM_SAMPLE_SIZE)
 	{
 	    printk("!!!!!RESET_PERIOD_BUFFER=%d!!!!\n\r",period_count);
 		mcasp_count=0;	
+		memcpy(dma_area/*0xffd50000*/,get_data_array(),64000);
 		period_count++;  
 	}
     
@@ -189,9 +217,7 @@ static void enqueue_dma()
 	dma_pos     = dma_src+dma_offset;               //runtime->dma_addr+ dma_offset;
 	fifo_level  = 0x20;			                    //prtd->params->fifo_level;
      
-	
-	
-	printk("DMA_POS=0x%x\n\r",dma_pos);
+	//printk("DMA_POS=0x%x\n\r",dma_pos);
 	
 	//mcasp_count=mcasp_count+1;
 	//printk("runtime->dma_addr=0x%x,prtd->period=0x%x\n\r",prtd->period,runtime->dma_addr);
@@ -205,55 +231,52 @@ static void enqueue_dma()
 	//printk("DaTA_TYPE=0x%x\n\r");
 
 
-     if (fifo_level)
-     {	 
+    if (fifo_level)
+    {	 
 	   count /= fifo_level;
-     } 
+    } 
      
+     //Механизм работает но слышны небольшие сбои щелчки при передаче данных(перезаписи массива).
+     //Нужно сделть  механизм в реальном времени нам пригрывет файлы наверно это вообще не должно быть здесь
+     //быстро подсовывать данные сюда пока они не закончились
      
+    
+    //memcpy(0xffd50000,get_data_array(),64000);
+    
+    
+    
+    /*     
      if(period_count==0)
      {	 
-     memcpy(0xffd50000,stereo_voice_buffer,32000);
-     }
- 
-     
-     
-     
- /*    
-     if(period_count==1)
-     {
-     memcpy(0xffd50000,&stereo_voice_buffer[128000],128000); 	 
+     memcpy(0xffd50000,stereo_voice_buffer,64000);
      }
      if(period_count==1)
-     {
-     memcpy(0xffd50000,&stereo_voice_buffer[128000],128000); 	 
-     }
-     if(period_count==1)
-     {
-     memcpy(0xffd50000,&stereo_voice_buffer[128000],128000); 	 
-     }
-     if(period_count==1)
-     {
-     memcpy(0xffd50000,&stereo_voice_buffer[128000],128000); 	 
-     }
+     {	 
+     memcpy(0xffd50000,&stereo_voice_buffer[64000],64000);
+     } 
+     if(period_count==2)
+     {	 
+     memcpy(0xffd50000,&stereo_voice_buffer[128000],64000);
+     } 
+     if(period_count==3)
+     {	 
+     memcpy(0xffd50000,&stereo_voice_buffer[192000],64000);
+     } 
+     if(period_count==4)
+     {	 
+     memcpy(0xffd50000,&stereo_voice_buffer[256000],64000);
+     } 
+     if(period_count==5)
+     {	 
+     memcpy(0xffd50000,&stereo_voice_buffer[320000],64000);
+     } 
+     if(period_count==6)
+     {	 
+     memcpy(0xffd50000,&stereo_voice_buffer[384000],64000);
+     } 
  */    
      
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
+    
 	 src = dma_pos;
 	 dst = 0x46400000;
 	 src_bidx = data_type;
@@ -282,6 +305,7 @@ static void enqueue_dma()
 	 }
 	 
 
+	 
 }
 
 
@@ -295,7 +319,7 @@ static void dma_request()
 	//Работает кусок pcm/dma-request выделяет нужные каналы.		
 	dma_channel = edma_alloc_channel (0xa, callback1, NULL, 0x2);
 		
-	printk("Ab_Arm_dma_Cnannel=%d\n\r",dma_channel);
+	printk("Ab_Arm_dma_Cnannel=%d|",dma_channel);
 		
 	// Request a Link Channel 
 	dma_slot = edma_alloc_slot (EDMA_CTLR(dma_channel), EDMA_SLOT_ANY);
@@ -356,23 +380,13 @@ Return Value:	    1  =>  Success  ,0 => Failure
 ***************************************************************************************************/
 bool Clear_Arm_EDMA_interface()
 {
-     
+  	
+	//STOP MCASP_DEVICE
+	 davinci_mcasp_trigger(l_rsubstream,SNDRV_PCM_TRIGGER_STOP,l_cpu_dai);  
 	 snd_soc_dapm_stream_event(l_pcm->private_data,playback_stream_name,SND_SOC_DAPM_STREAM_STOP);
-     snd_dma_free_pages(dmab_slic);
+	 snd_dma_free_pages(dmab_slic);
      edma_free_channel(dma_channel);
      edma_free_slot(dma_slot);
-
-     
-     
-     
-//	 snd_dma_free_pages(dmab_slic);
-//	 edma_free_channel(dma_channel);
-//   edma_free_slot(dma_slot);
-//   snd_soc_dapm_stream_event(l_pcm->private_data,l_codec_dai->driver->playback.stream_name,SND_SOC_DAPM_STREAM_STOP);
-//   dma_free_coherent(test_pcm->card->dev, size, buf->, buf.addr);
-//   dma_free_writecombine(test_pcm->card->dev, size, dmab->area, dmab->addr);
-//   dmab->area=0;
-	
 	return 1;
 }
 

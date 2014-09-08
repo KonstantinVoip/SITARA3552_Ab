@@ -1,10 +1,10 @@
 /**********************************************************************************************************************
-*                                        (c) COPYRIGHT by LONIIS.                                             *
+*                                        (c) COPYRIGHT by LO ZNIIS.                                             *
 *                                               All rights reserved.                                                  *
 ***********************************************************************************************************************
-* Module      : mpcdrvmain.h
+* Module      : Ab_arm_fifodrv.h
 *
-* Description : definitions and declarations for mpc Ab_ARM_I-TDM driver kernel module 
+* Description : definitions and declarations for ARM FIFO DRV driver kernel module 
 *
 * Author      : Konstantin Shiluaev
 *
@@ -18,7 +18,7 @@
 * $Source: 
 * $State: Debug$
 * $Revision: 0.0.1 $ $Name: $
-* $Date: 2012/09/21 10:40:51 $
+* $Date: 2014/09/21 10:40:51 $
 * $Locker: $
 *
 * Module's revision history:
@@ -30,8 +30,8 @@
 /*-----------------------------------------------------------------------------
  GENERAL NOTES
 -----------------------------------------------------------------------------*/
-#ifndef MPCDRVMAIN_H
-#define MPCDRVMAIN_H
+#ifndef ABARMFIFODRV_H
+#define ABARMFIFODRV_H
 
 /*****************************************************************************/
 /*	COMMON CONFIGURATION						     */
@@ -45,7 +45,6 @@
 /*****************************************************************************/
 /*	PUBLIC MACROS							     */
 /*****************************************************************************/
-
 
 
 
