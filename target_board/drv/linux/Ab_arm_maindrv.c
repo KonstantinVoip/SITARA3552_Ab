@@ -1,10 +1,10 @@
 /**********************************************************************************************************************
-*                                        (c) COPYRIGHT by LONIIS.                                             *
+*                                        (c) COPYRIGHT by LO ZNIIS 2014                                             *
 *                                            All rights reserved.                                                  *
 ***********************************************************************************************************************
 * Module      : Ab_arm_maindrv.c
 *
-* Description : Sitara 3352 linux driver kernel module init 
+* Description : Sitara 3352 linux Main driver kernel module init Start 
 *
 * Author      : Konstantin Shiluaev..
 *
@@ -97,8 +97,8 @@ int udp_dest_port_LE=0x1027;  //ПОРТ 10000 туда кидаю  данные
 
 #define RTP_SOURCE_TRAFFIC_LE   0x0182A8C0   //192.168.130.1  Little  Endian
 #define RTP_SOURCE_TRAFFIC_BE   0xC0A88201   //192.168.130.1  Big     Endian         
-#define SITARA_cpsw0_IP_ADDR     0xC0A9827C  //192.168.130.124
-#define SITARA_cpsw1_IP_ADDR     0x0A000001  //10.0.0.1
+#define SITARA_cpsw0_IP_ADDR    0xC0A9827C  //192.168.130.124
+#define SITARA_cpsw1_IP_ADDR    0x0A000001  //10.0.0.1
 
 /**************************************************************************************************
 Syntax:      	    unsigned int Hook_Func_ARp
@@ -114,10 +114,6 @@ unsigned int Hook_Func_ARP(uint hooknum,
 
 {
 //printk("+++++++++++++ARP+++++++++++++\n\r");
-
-	
-	
-	
 return NF_ACCEPT;	
 }
 
@@ -250,30 +246,19 @@ bool ret=0;
      
 
         /*Init Low Level Hardware  Appart functon*/
-        Init_Arm_AIC3106_low_level_codec_i2c();
-        Init_Arm_McASP_interface();
-       
+         Init_Arm_AIC3106_low_level_codec_i2c();
+         Init_Arm_McASP_interface();
         /*Init and Start EDMA  Sitara Interface*/
-        Init_Arm_EDMA_interface();
-
-
-
-        
-        
-        
-    /*
-    if(ret==0)
-	{
+        //Init_Arm_EDMA_interface();   
+        /*
+    	if(ret==0)
+		{
 		printk("?Error Init McASP DEvice?\n\r");  
-	}
-    */
-	  
-	
-  // ret= Start_Test_Sitara_arm_func();
-
-     
-   
-   /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/    
+	    }
+        */
+       //ret= Start_Test_Sitara_arm_func();
+      
+       /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/    
 
 #if 0
 
@@ -314,15 +299,13 @@ Return Value:	    none
 void Ab_arm_cleanup_module(void)
 {	
 //  printk("Ab_arm_exit_module() I-TDM called\n");
-
-
 #if 0	
 	nf_unregister_hook(&bundle);      
     nf_unregister_hook(&arp_bundle);
     Clear_Arm_EDMA_interface();
 #endif
-    
-    Clear_Arm_EDMA_interface();
+   //
+    //Clear_Arm_EDMA_interface();
     printk("!OK_CLEAR ALL DATA !\n\r") ;
     
 }
