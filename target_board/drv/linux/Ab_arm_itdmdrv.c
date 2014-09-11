@@ -29,7 +29,7 @@
 /*****************************************************************************/
 #include "include/Ab_arm_itdmdrv.h"
 #include "include/Ab_arm_ethernetdrv.h"
-
+#include "include/Ab_arm_fifodrv.h"
 
 
 /**************************************************************************************************
@@ -57,7 +57,10 @@ int get_rtp_prepare_packet_handler(unsigned char *packet,int packet_len)
 	  
        //Получаем голосовые  данные из  нашего RTP пакета  
        memcpy(&data_packet_array, &packet[14+20+8+12], rtp_payload_size);
-        	    
+       //Нужно всё это теперь  упаковть в большой накопительный буфер FIFO на 64000 байт складируем Пакеты.
+       voice_buf_set_data_in_rtp_stream1 (data_packet_array ,rtp_payload_size);
+       
+       
        //Первые 100 Элементов голосовых данных RTP пакета  //Вроде правильно
        /*
 	   for(i=0;i<100;i++)
@@ -74,7 +77,11 @@ int get_rtp_prepare_packet_handler(unsigned char *packet,int packet_len)
        */
     	  
      //}
-	
+	   //Нужно всё это теперь  упаковть в большой накопительный буфер FIFO на 64000 байт.
+       
+       
+       
+       
 	 packet_count++;
     	 
 return 1;

@@ -471,12 +471,12 @@ int main_sip_call(char* ownnumber, char* ownpass, char* ownip, char* ownsipport,
 
 /*"Usage : <Own Number> <Own pass> <Local IP> <Local SIP Port> <Local RTP Port> <Server IP> <Server SIP Port> <PhoneNumber> <OutputFilename> <InputFilename> <Vyzov>"*/
 
-	int  fStop=0;
+  int  fStop=0;
 
   switch((*scall).V)
 
   {
-       	case VYZOV_STATE_INIT:
+    case VYZOV_STATE_INIT:
 
 	y = 0;
 	(*scall).return_code = 0;
@@ -571,12 +571,12 @@ int main_sip_call_Helen(char* ownnumber, char* ownpass, char* ownip, char* ownsi
 	scall1.sip_state = SIP_SESSION_STATE_START;
 
 	
-scall1.buf_point = 0;
+    scall1.buf_point = 0;
 
 	scall1.call_end = 0;
 
 	
-strcpy(scall1.REMOTE_SIP_IPADDR, serverip);
+    strcpy(scall1.REMOTE_SIP_IPADDR, serverip);
 
 	scall1.LOCAL_SIP_PORT = atoi(ownsipport);
 
@@ -584,10 +584,12 @@ strcpy(scall1.REMOTE_SIP_IPADDR, serverip);
 
 	scall1.REMOTE_SIP_PORT = atoi(serversipport);
 	if ((scall1.sudp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
+	{	
         
-		err("socket");
- 
-  
+		printf("__err_socket__scall1.sudp = socket\n\r");
+		//err("socket");
+     
+	} 
 
 	/* Set Port = LOCAL_PORT, leaving IP address = Any */
 
@@ -619,45 +621,31 @@ strcpy(scall1.REMOTE_SIP_IPADDR, serverip);
     
 	scall1.sin1.sin_port = htons(scall1.REMOTE_SIP_PORT);
 
-    
-
+   
 	connect (scall1.sudp, &scall1.sin1, sizeof(scall1.sin1));   
 
-    
-
 	if ((scall1.RTP_data_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
+	{	
 
-        	err("socket");
-
-
-	
-	// Set Port = LOCAL_RTP_PORT, leaving IP address = Any
-	
+        printf("__err_socket__scall1.RTP_data_sock\n\r");	
+		//err("socket");
+	}
+    // Set Port = LOCAL_RTP_PORT, leaving IP address = Any
 	bzero(&scall1.clnt_data_addr, sizeof(struct sockaddr_in));
-	
 	scall1.clnt_data_addr.sin_family = AF_INET;
-
 	scall1.clnt_data_addr.sin_addr.s_addr = inet_addr(ownip); 	
 	scall1.clnt_data_addr.sin_port = htons(scall1.LOCAL_RTP_PORT);
 
-  
-
 	/* Bind the socket */
-    
 	bind(scall1.RTP_data_sock, (struct sockaddr *)&scall1.clnt_data_addr, sizeof(scall1.clnt_data_addr));
-    
 	fcntl(scall1.RTP_data_sock, F_SETFL, O_NONBLOCK); 
 
 	int fStop=0;
 	while (!fStop) 
-
 	{
-		fStop=
-main_sip_call (ownnumber, ownpass, ownip, ownsipport, ownrtpport, serverip, serversipport, phonenum, ofname, ifname, &scall1);
-	
+    fStop=main_sip_call (ownnumber, ownpass, ownip, ownsipport, ownrtpport, serverip, serversipport, phonenum, ofname, ifname, &scall1);
+	} 
 
-} 
-
-	return scall1.return_code; 
+return scall1.return_code; 
 
 }

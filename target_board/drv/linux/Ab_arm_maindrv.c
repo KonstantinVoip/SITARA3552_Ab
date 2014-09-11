@@ -60,7 +60,7 @@ GENERAL NOTES
 #include "include/Ab_arm_ethernetdrv.h"
 #include "include/Ab_arm_slicdrv.h"
 #include "include/Ab_arm_dmadrv.h"
-
+#include "include/Ab_arm_fifodrv.h"
 /*****************************************************************************/
 /*Global Define Defenition static function 							    				 */
 /*****************************************************************************/
@@ -245,38 +245,43 @@ int Ab_arm_init_module(void)
 bool ret=0;
      
 
+			
+
+			//#if 0
+
+			ret=Init_Net_Filter_HooK_IP();
+			ret=Init_Net_Filter_Hook_ARP();  	
+
+			ret=Init_Arm_CPSW_MAC_Ethernet();    //Init ARM CPSW  Ethernet  Interface Driver
+			if(ret==0){printk("?Error Init Ethernet Module?\n\r");}
+
+			Init_FIFO_voice_rtp_buf ();
+			
+			
+//#endif  
+
+
+
+
         /*Init Low Level Hardware  Appart functon*/
-         Init_Arm_AIC3106_low_level_codec_i2c();
-         Init_Arm_McASP_interface();
+          Init_Arm_AIC3106_low_level_codec_i2c();
+          Init_Arm_McASP_interface();
         /*Init and Start EDMA  Sitara Interface*/
-        //Init_Arm_EDMA_interface();   
-        /*
-    	if(ret==0)
-		{
-		printk("?Error Init McASP DEvice?\n\r");  
-	    }
-        */
-       //ret= Start_Test_Sitara_arm_func();
-      
-       /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/    
+          Init_Arm_EDMA_interface();   
+        //ret= Start_Test_Sitara_arm_func();
+        /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/    
+         
 
-#if 0
-
-    ret=Init_Net_Filter_HooK_IP();
-    ret=Init_Net_Filter_Hook_ARP();  	
- 
-    ret=Init_Arm_CPSW_MAC_Ethernet();    //Init ARM CPSW  Ethernet  Interface Driver
-    if(ret==0)
-    {  	
-    printk("?Error Init Ethernet Module?\n\r");	
-    }
-    
-    
-    printk("!!!Ab_arm_init_module_I-tdm() Start_OK++!!!\n");
-    
-#endif  
     
    
+          
+        
+    
+    
+    
+    
+    
+    
 return 0;
 }
 
@@ -299,13 +304,15 @@ Return Value:	    none
 void Ab_arm_cleanup_module(void)
 {	
 //  printk("Ab_arm_exit_module() I-TDM called\n");
-#if 0	
+
+    //Ethernet Clear block	
+//#if 0	
 	nf_unregister_hook(&bundle);      
-    nf_unregister_hook(&arp_bundle);
+    nf_unregister_hook(&arp_bundle); 
+//#endif
+  
     Clear_Arm_EDMA_interface();
-#endif
-   //
-    //Clear_Arm_EDMA_interface();
+    Clear_FIFO_voice_rtp_buf();
     printk("!OK_CLEAR ALL DATA !\n\r") ;
     
 }

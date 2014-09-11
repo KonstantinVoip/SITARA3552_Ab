@@ -40,8 +40,11 @@ scall1.REMOTE_SIP_PORT = 5060;
 
 
     if ((scall1.sudp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
-        err("socket");
- 
+    {	
+        
+         printf("Helen_ERROR_scall1.sudp\n\r");
+    	//err("socket");
+    }   
     // Set Port = LOCAL_PORT, leaving IP address = Any */
     bzero(&scall1.sin1, sizeof(struct sockaddr_in));
     scall1.sin1.sin_family = AF_INET;
@@ -60,14 +63,16 @@ scall1.REMOTE_SIP_PORT = 5060;
     connect (scall1.sudp, &scall1.sin1, sizeof(scall1.sin1));   
 
     if ((scall1.RTP_data_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
-        err("socket");
-
+    {	
+    	 printf("scall1.RTP_data_sock.sudp\n\r");
+    	// err("socket");
+    }
 	// Set Port = LOCAL_RTP_PORT, leaving IP address = Any
 	bzero(&scall1.clnt_data_addr, sizeof(struct sockaddr_in));
 	scall1.clnt_data_addr.sin_family = AF_INET;
 	scall1.clnt_data_addr.sin_port = htons(scall1.LOCAL_RTP_PORT);
 
-    // Bind the socket */
+    // Bind the socket 
     bind(scall1.RTP_data_sock, (struct sockaddr *)&scall1.clnt_data_addr, sizeof(scall1.clnt_data_addr));
     fcntl(scall1.RTP_data_sock, F_SETFL, O_NONBLOCK); 
 
@@ -86,8 +91,12 @@ scall2.REMOTE_SIP_PORT = 5060;
 
 
     if ((scall2.sudp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
-        err("socket");
- 
+    {	
+    	 printf("Helen_ERROR_scall2.sud\n\r");
+    	//err("socket");
+    
+    }
+        
     // Set Port = LOCAL_PORT, leaving IP address = Any
     bzero(&scall2.sin1, sizeof(struct sockaddr_in));
     scall2.sin1.sin_family = AF_INET;
@@ -106,8 +115,11 @@ scall2.REMOTE_SIP_PORT = 5060;
     connect (scall2.sudp, &scall2.sin1, sizeof(scall2.sin1));   
 
     if ((scall2.RTP_data_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
-        err("socket");
-
+    {	
+    	printf("Helen_ERROR_scall2.RTP\n\r");
+    	
+    }
+        
 	// Set Port = LOCAL_RTP_PORT, leaving IP address = Any
 	bzero(&scall2.clnt_data_addr, sizeof(struct sockaddr_in));
 	scall2.clnt_data_addr.sin_family = AF_INET;
@@ -123,11 +135,13 @@ scall2.REMOTE_SIP_PORT = 5060;
     
     //while (1) 
     //{
+     main_sip_call_Helen ("215", "215test", "192.168.130.128", "5060", "22222", "192.168.255.134", "5060", "212", "bu811.wav", "input1.wav");
     
-    main_sip_call_Helen ("215", "215test", "192.168.255.107", "5060", "22222", "192.168.255.134", "5060", "212", "bu811.wav", "input1.wav");
+    
+    //main_sip_call_Helen ("215", "215test", "192.168.255.107", "5060", "22222", "192.168.255.134", "5060", "212", "bu811.wav", "input1.wav");
     //sleep(2);
     /*
-    main_sip_call ("213", "213test", "192.168.255.107", "5060", "22222", "192.168.255.134", "5060", "214", "bu811.wav", "input2.wav", &scall2);
+            main_sip_call ("213", "213test", "192.168.255.107", "5060", "22222", "192.168.255.134", "5060", "214", "bu811.wav", "input2.wav", &scall2);
     //}
 
 */

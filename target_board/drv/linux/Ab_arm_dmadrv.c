@@ -35,6 +35,7 @@
 /*****************************************************************************/
 #include "include/Ab_arm_dmadrv.h"
 #include "include/Ab_arm_TestBuf.h"
+#include "include/Ab_arm_fifodrv.h"
 #include "edma.h"
 
 
@@ -91,9 +92,42 @@ Syntax:      	    static void callback1(unsigned lch, u16 ch_status, void *data)
 Parameters:     	unsigned lch, u16 ch_status, void *data
 Remarks:			Start Testing EDMA Callback1 function
 ***************************************************************************************************/
-static inline signed char* get_data_array()
+static inline unsigned char* get_data_array()
 {
-	return &stereo_voice_buffer[0];
+	 unsigned char  in_buf_rtp_dir1[64000];
+	 int  in_size_rtp_dir1=0;
+	 int l_i=2000; //Количество элементов Массива
+	 static int count =0;
+	 int i;
+	 //printk("++get_data_array()++\n\r");
+	 
+	 if(voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1)==1)
+	 { 
+	   	 
+	   if(count<=l_i)
+	   {   	   
+		 for(i=0;i<=l_i;i++)
+		 {
+			// printk("{%d|0x%x}-",i,stereo_voice_buffer[i]); 
+			 printk("{%d|0x%x}-",i,in_buf_rtp_dir1[i]);
+		     count++;
+		 }
+	   }	 
+	  return &stereo_voice_buffer[0];  //&in_buf_rtp_dir1[0];
+	 }
+
+	 //Распечатаем отладочный массив данных посмотрим что здесь у нас делаеться
+	
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+return 0;	
+	//return &stereo_voice_buffer[0]; //Возврвщаем локальный буфер для проверки
 }
 
 
@@ -208,7 +242,16 @@ static void enqueue_dma()
 	{
 	    printk("!!!!!RESET_PERIOD_BUFFER=%d!!!!\n\r",period_count);
 		mcasp_count=0;	
+		
+		if(get_data_array()==0)
+		{	
+		//printk("get_data_array()==0\n\r");
+		}	
+		else
+		{	
 		memcpy(dma_area/*0xffd50000*/,get_data_array(),64000);
+		}
+		
 		period_count++;  
 	}
     
@@ -242,9 +285,7 @@ static void enqueue_dma()
      
     
     //memcpy(0xffd50000,get_data_array(),64000);
-    
-    
-    
+       
     /*     
      if(period_count==0)
      {	 
@@ -276,6 +317,7 @@ static void enqueue_dma()
      } 
  */    
      
+    
     
 	 src = dma_pos;
 	 dst = 0x46400000;
