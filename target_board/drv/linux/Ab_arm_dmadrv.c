@@ -17,6 +17,12 @@
 #include <linux/io.h>
 #include <linux/pm_runtime.h>
 
+
+#include <linux/delay.h>  // mdelay ,msleep,
+#include <linux/timer.h>  // timer 
+#include <linux/ktime.h>  // hardware timer (ktime)
+
+
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -48,6 +54,21 @@
 
 
 
+
+
+/*****************************************************************************/
+/*	GLOBAL TIMER STRUCTURES     					     				 	 */
+/*****************************************************************************/
+struct timer_list timer1_read,timer2_write;          //default timer   
+static struct hrtimer hr_timer;           //high resolution timer 
+
+
+
+
+
+
+
+
 /*****************************************************************************/
 /*	GLOBAL STATIC DEFENITION						     				 			 */
 /*****************************************************************************/
@@ -56,7 +77,7 @@ static void enqueue_dma();
 static void dma_request();
 static void dma_prepare();
 static void dma_trigger();
-
+static inline unsigned char* get_data_array();
 
 //EDMA GLOBAL Sitara Parameters
 int dma_channel=0;
@@ -87,6 +108,19 @@ extern int  davinci_mcasp_trigger(struct snd_pcm_substream *substream,int cmd, s
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 /**************************************************************************************************
 Syntax:      	    static void callback1(unsigned lch, u16 ch_status, void *data)
 Parameters:     	unsigned lch, u16 ch_status, void *data
@@ -99,42 +133,46 @@ static inline unsigned char* get_data_array()
 	 int l_i=2000; //Количество элементов Массива
 	 static int count =0;
 	 int i;
-	 //printk("++get_data_array()++\n\r");
+	 static unsigned int mcasp_count=0;
+	 static unsigned int period_count=0;
+	 mcasp_count=mcasp_count+1;
 	 
-	 if(voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1)==1)
-	 { 
-	   	 
+	 unsigned int dma_src,dma_area;
+	 dma_area=dmab_slic->area;
+	 dma_src=dmab_slic->addr;
+	 
+
+     voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1);
+	  
+	   /*	 
 	   if(count<=l_i)
 	   {   	   
 		 for(i=0;i<=l_i;i++)
 		 {
 			// printk("{%d|0x%x}-",i,stereo_voice_buffer[i]); 
-			 printk("{%d|0x%x}-",i,in_buf_rtp_dir1[i]);
+			 //printk("{%d|0x%x}-",i,in_buf_rtp_dir1[i]);
 		     count++;
 		 }
-	   }	 
-	  return &stereo_voice_buffer[0];  //&in_buf_rtp_dir1[0];
-	 }
-
+	   }*/	 
+	 
 	 //Распечатаем отладочный массив данных посмотрим что здесь у нас делаеться
-	
-	 
-	 
-	 
-	 
-	 
-	 
-	 
-	 
-return 0;	
-	//return &stereo_voice_buffer[0]; //Возврвщаем локальный буфер для проверки
+//return &in_buf_rtp_dir1[0];	
+return &stereo_voice_buffer_64[0]; //Возврвщаем локальный буфер для проверки
+//return 0; //Возврвщаем локальный буфер для проверки
 }
 
 
-
-
-
-
+/**************************************************************************************************
+Syntax:      	    void timer1_routine(unsigned long data)
+Parameters:     	void data
+Remarks:			timer functions 
+***************************************************************************************************/
+void timer1_routine(unsigned long data)
+{   
+   get_data_array(); 
+   //printk("+MOD_TIMER+\n\r");	
+   mod_timer(&timer1_read, jiffies + msecs_to_jiffies(100)); // restarting timer 100 тиковов    
+}
 
 
 
@@ -206,6 +244,19 @@ bool Init_Arm_EDMA_interface()
 	 dma_trigger();
 	 davinci_mcasp_trigger(l_rsubstream,SNDRV_PCM_TRIGGER_START,l_cpu_dai); 
              
+	 
+	 //TIMER _INIT
+     //Timer1
+     // init_timer(&timer1_read);
+     // timer1_read.function = timer1_routine;
+     // timer1_read.data = 1;
+     // timer1_read.expires = jiffies + msecs_to_jiffies(200);//2000 ms 
+	 
+     // add_timer(&timer1_read);  //Starting the timer1 
+	  
+	 
+	 
+	 
 
 	return 1;
 }
@@ -219,8 +270,11 @@ static void enqueue_dma()
 {
 	dma_addr_t dma_pos;
 	dma_addr_t src, dst;
-	static unsigned int mcasp_count;
-	static unsigned int period_count;
+	static unsigned int mcasp_count=0;
+	static unsigned int period_count=0;
+	static unsigned int prtd_period=0;
+	
+	unsigned char  in_buf_rtp_dir1[8000];
 	
 	unsigned int period_size;
 	unsigned int dma_offset;
@@ -236,33 +290,123 @@ static void enqueue_dma()
 	dma_src=dmab_slic->addr;
 	
 	
+
 	
-    mcasp_count=mcasp_count+1;
-	if(mcasp_count==PCM_SAMPLE_SIZE)
+	//printk("prtd_period=%d,mcasp_count=%d\n\r",prtd_period,mcasp_count);
+	
+	
+	if(prtd_period==0)
 	{
-	    printk("!!!!!RESET_PERIOD_BUFFER=%d!!!!\n\r",period_count);
-		mcasp_count=0;	
 		
-		if(get_data_array()==0)
-		{	
-		//printk("get_data_array()==0\n\r");
-		}	
-		else
-		{	
-		memcpy(dma_area/*0xffd50000*/,get_data_array(),64000);
+		if(mcasp_count==0)
+		{
+		printk("!!!!!!!Podstava!!!!!\n\r");
+		memcpy(0xffd50000,&stereo_voice_buffer[0],64000);
 		}
-		
-		period_count++;  
 	}
-    
+   
+	//mcasp_count=mcasp_count+1;
+	
+	if(prtd_period==0)
+	{	
+	
+		printk("mcasp_count=%d\n\r",mcasp_count);
+		
+		if(mcasp_count==0)
+		{	 
+			
+		 memcpy(0xffd50000,&stereo_voice_buffer[64000],4000);
+		} 
+		if(mcasp_count==1)
+		{	 
+			
+			memcpy(0xffd50fa0,&stereo_voice_buffer[68000],4000);
+		} 
+		if(mcasp_count==2)
+		{	 
+		
+			memcpy(0xffd51f40,&stereo_voice_buffer[72000],4000);
+		} 
+		if(mcasp_count==3)
+		{	 
+			
+			memcpy(0xffd52e00,&stereo_voice_buffer[76000],4000);
+		} 
+		if(mcasp_count==4)
+		{	 
+			
+			memcpy(0xffd53e80,&stereo_voice_buffer[80000],4000);
+		} 
+		if(mcasp_count==5)
+		{	 
+			
+			memcpy(0xffd54e20,&stereo_voice_buffer[84000],4000);
+		} 
+		if(mcasp_count==6)
+		{	 
+			
+			memcpy(0xffd55dc0,&stereo_voice_buffer[88000],4000);
+		} 
+		if(mcasp_count==7)
+		{	 
+			memcpy(0xffd56d60,&stereo_voice_buffer[92000],4000);
+		} 
+		if(mcasp_count==8)
+		{	 
+			memcpy(0xffd57d00,&stereo_voice_buffer[96000],4000);
+		} 
+		if(mcasp_count==9)
+		{	 
+           memcpy(0xffd58ca0,&stereo_voice_buffer[100000],4000);
+		} 
+		if(mcasp_count==10)
+		{	 
+          memcpy(0xffd59c40,&stereo_voice_buffer[104000],4000);
+		} 
+		if(mcasp_count==11)
+		{	 
+          memcpy(0xffd5abe0,&stereo_voice_buffer[108000],4000);
+		} 
+		if(mcasp_count==12)
+		{	 
+          memcpy(0xffd5bb80,&stereo_voice_buffer[112000],4000);
+		}
+		if(mcasp_count==13)
+		{	 
+          printk("+++++++++++++LAST++++++++++++++++++\n\r");
+		  memcpy(0xffd5cb20,&stereo_voice_buffer[116000],4000);
+          memcpy(0xffd5dac0,&stereo_voice_buffer[120000],4000);
+          memcpy(0xffd5ea60,&stereo_voice_buffer[124000],4000);
+          
+		}
+	
+		if(mcasp_count==14)
+		{
+			memcpy(0xffd5fa00,&stereo_voice_buffer[128000],4000);
+	
+		}
+	
+	
+	
+	}
+        
+  
+
+
+	
+	
+	
+	
+	
     period_size = 0xfa0;                  	        //snd_pcm_lib_period_bytes(substream);
 	dma_offset  = mcasp_count*period_size;          //prtd->period * period_size;
 	dma_pos     = dma_src+dma_offset;               //runtime->dma_addr+ dma_offset;
 	fifo_level  = 0x20;			                    //prtd->params->fifo_level;
      
-	//printk("DMA_POS=0x%x\n\r",dma_pos);
 	
-	//mcasp_count=mcasp_count+1;
+	//printk("DMA_POS=0x%x\n\r",dma_offset);
+	
+	mcasp_count=mcasp_count+1;
 	//printk("runtime->dma_addr=0x%x,prtd->period=0x%x\n\r",prtd->period,runtime->dma_addr);
 	//printk("+enqueue_dma_=0x%x,dma_pos=0x%x,dma_src=0x%x,dma_offset=0x%x\n\r",mcasp_count,dma_pos,dma_src,dma_offset);
 	
@@ -346,7 +490,84 @@ static void enqueue_dma()
 		    edma_set_transfer_params(dma_slot , acnt, fifo_level,count, fifo_level,ABSYNC);
 	 }
 	 
-
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	 if(prtd_period==1)
+	 {
+	 // printk("STOP_ALL_RTANSLATIONS_FOR_DMA!!!!\n\r");	 
+	 
+	 /*
+	 davinci_mcasp_trigger(l_rsubstream,SNDRV_PCM_TRIGGER_STOP,l_cpu_dai);  
+	 snd_soc_dapm_stream_event(l_pcm->private_data,playback_stream_name,SND_SOC_DAPM_STREAM_STOP);
+	 snd_dma_free_pages(dmab_slic);
+     edma_free_channel(dma_channel);
+     edma_free_slot(dma_slot);
+	 */
+	 
+	 }
+	 
+	if(mcasp_count==15)
+	{
+	printk("!!!!!RESET_PERIOD_BUFFER=%d!!!!\n\r",prtd_period);
+	mcasp_count=0;
+	prtd_period++;
+    }
+	 
+	 
+	 
+	 
+#if 0 
+	if(mcasp_count==15)
+	{
+	    printk("!!!!!RESET_PERIOD_BUFFER=%d!!!!\n\r",period_count);
+		mcasp_count=0;	
+		
+		
+		     if(period_count==0)
+		     {	 
+		     memcpy(0xffd50000,&stereo_voice_buffer[0],64000);
+		     }
+		
+		     
+		     
+		     
+		     /*
+		     if(period_count==1)
+		     {	 
+		     memcpy(0xffd50000,&stereo_voice_buffer[64000],64000);
+		     } 
+	
+		     
+		     if(period_count==2)
+		     {	 
+		     memcpy(0xffd50000,&stereo_voice_buffer[128000],64000);
+		     } 
+		     if(period_count==3)
+		     {	 
+		     memcpy(0xffd50000,&stereo_voice_buffer[192000],64000);
+		     } 
+		     if(period_count==4)
+		     {	 
+		     memcpy(0xffd50000,&stereo_voice_buffer[256000],64000);
+		     } 
+		     if(period_count==5)
+		     {	 
+		     memcpy(0xffd50000,&stereo_voice_buffer[320000],64000);
+		     } 
+		     if(period_count==6)
+		     {	 
+		     memcpy(0xffd50000,&stereo_voice_buffer[384000],64000);
+		     } 
+		*/
+		//memcpy(dma_area/*0xffd50000*/,get_data_array(),63971);
+		period_count++;  
+	}
+#endif	
+	 
+	 
+	
 	 
 }
 
@@ -386,7 +607,9 @@ static void dma_prepare()
 	edma_read_slot(dma_slot,&edma_par);
 	edma_write_slot(dma_channel, &edma_par);	
 	enqueue_dma();
-
+	
+	
+	//memcpy(0xffd50000,get_data_array(),64000);
 }
 /*****************************************************************************/
 /*	PUBLIC FUNCTION DEFINITIONS					     */
@@ -429,7 +652,9 @@ bool Clear_Arm_EDMA_interface()
 	 snd_dma_free_pages(dmab_slic);
      edma_free_channel(dma_channel);
      edma_free_slot(dma_slot);
-	return 1;
+ 	// del_timer_sync(&timer1_read);              /* Deleting the timer */ 
+     
+     return 1;
 }
 
 

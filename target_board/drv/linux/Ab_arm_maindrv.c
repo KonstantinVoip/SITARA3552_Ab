@@ -61,6 +61,11 @@ GENERAL NOTES
 #include "include/Ab_arm_slicdrv.h"
 #include "include/Ab_arm_dmadrv.h"
 #include "include/Ab_arm_fifodrv.h"
+
+
+#define ENABLE_APLAY_WAV_FILE  1
+
+
 /*****************************************************************************/
 /*Global Define Defenition static function 							    				 */
 /*****************************************************************************/
@@ -247,17 +252,14 @@ bool ret=0;
 
 			
 
-			//#if 0
-
+//#if 0
+/*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/
 			ret=Init_Net_Filter_HooK_IP();
 			ret=Init_Net_Filter_Hook_ARP();  	
-
 			ret=Init_Arm_CPSW_MAC_Ethernet();    //Init ARM CPSW  Ethernet  Interface Driver
 			if(ret==0){printk("?Error Init Ethernet Module?\n\r");}
-
 			Init_FIFO_voice_rtp_buf ();
-			
-			
+	
 //#endif  
 
 
@@ -268,20 +270,12 @@ bool ret=0;
           Init_Arm_McASP_interface();
         /*Init and Start EDMA  Sitara Interface*/
           Init_Arm_EDMA_interface();   
-        //ret= Start_Test_Sitara_arm_func();
-        /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/    
-         
 
-    
    
+        /*Start Testing FUnctions */       
+         //ret= Start_Test_Sitara_arm_func();
           
-        
-    
-    
-    
-    
-    
-    
+          
 return 0;
 }
 
@@ -311,8 +305,10 @@ void Ab_arm_cleanup_module(void)
     nf_unregister_hook(&arp_bundle); 
 //#endif
   
+//#if 0
     Clear_Arm_EDMA_interface();
     Clear_FIFO_voice_rtp_buf();
+//#endif 
     printk("!OK_CLEAR ALL DATA !\n\r") ;
     
 }

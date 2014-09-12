@@ -168,19 +168,13 @@ static unsigned int mpcfifo_put(struct mpcfifo *rbd_p,const unsigned char *buf)
 	all_data_size=all_data_size+rbd_p->cur_put_packet_size;
 	rbd_p->all_rtp_paload_data_size=all_data_size;
 	
-	/*
-	if(all_data_size>=32000)
-	{
-		//printk("mpcfifo_put/all_data_size>=32000\n\r");
-		all_data_size=0;	
-	}
-	*/
 	
 	for(i=0;i<ps.size;i++)
 	{
-		//ps.data[i]=(u16)buf[i];
 		ps.data[i]=buf[i];   
 	}
+	
+	
 	rbd_p->q[rbd_p->tail++]=ps;
 	//rbd_p->tail=rbd_p->N -rbd_p->head;
 	rbd_p->tail=rbd_p->tail %rbd_p->N; //глубина очереди 32 пакет потом обнуляем хвост в 0 на начало.
@@ -206,30 +200,19 @@ static void mpcfifo_get(struct mpcfifo *rbd_p, void *obj)
 	DATA_lbc local;
 	
 	//printk("mpcfifo_get/rbd_p->all_rtp_paload_data_size=%d\n\r",rbd_p->all_rtp_paload_data_size);
-	
-	
 	//printk("rbd_p->all_rtp_paload_data_size=%d\n\r",rbd_p->all_rtp_paload_data_size);
-	/*
-	if(rbd_p->all_rtp_paload_data_size>=32000)
-	{
-		for(i=0;i<32000;i++)
-		{
-			  *(((u8 *)obj) + i) = rbd_p->q[rbd_p->head].data[i];
-		}
-	   // printk("_mpcfifo_get_BUF_OK==32000\n\r");
-		
-	}
-	else
-	{
-		//printk("?mpcfifo_get_BUF_OK_buffer_loss_?\n\r");
-	}
-	*/
-	
 	
 	
 	rbd_p->head =rbd_p->head %rbd_p->N;
+	
+	/*
 	local.size = rbd_p->q[rbd_p->head].size;
 	rbd_p->cur_get_packet_size=rbd_p->q[rbd_p->head].size;
+	*/
+	local.size = 62000;//rbd_p->q[rbd_p->head].size;
+	rbd_p->cur_get_packet_size=rbd_p->q[rbd_p->head].size;
+	
+	
 	for(i=0;i<local.size;i++)
 	{
 		  *(((u8 *)obj) + i) = rbd_p->q[rbd_p->head].data[i];
@@ -240,7 +223,7 @@ static void mpcfifo_get(struct mpcfifo *rbd_p, void *obj)
 
 
 	//mdelay(500);
-	//printk("++mpc_fifo_get_ok++\n\r");
+	printk("++mpc_fifo_get_ok++\n\r");
    /*	
    printk("+FIFO_Dir0_rfirst   |0x%04x|0x%04x|0x%04x|0x%04x|0x%04x|0x%04x|+\n\r", local.data[0], local.data[1], local.data[2], local.data[3], local.data[4], local.data[5]);
    printk("+FIFO_Dir0_rlast    |0x%04x|0x%04x|0x%04x|0x%04x|0x%04x|0x%04x|+\n\r", local.data[rbd_p->cur_get_packet_size-6], local.data[rbd_p->cur_get_packet_size-5], local.data[rbd_p->cur_get_packet_size-4], local.data[rbd_p->cur_get_packet_size-3], local.data[rbd_p->cur_get_packet_size-2], local.data[rbd_p->cur_get_packet_size-1]);
