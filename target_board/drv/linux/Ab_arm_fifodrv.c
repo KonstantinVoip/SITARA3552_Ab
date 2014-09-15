@@ -133,14 +133,14 @@ static bool mpcfifo_get_buf_ready(struct mpcfifo *rbd_p)
 	if (l_tail -rbd_p->head ==0)
 	{
 		//mdelay(500);
-	  printk("????mpcfifo_get_buf_ready/l_tail -rbd_p->head=0????\n\r");
+	 // printk("????mpcfifo_get_buf_ready/l_tail -rbd_p->head=0????\n\r");
 		return 0;
 	}
 	//schetchic1=rbd_p->head;//-rbd_p->tail;
 	if(rbd_p->head-l_tail==FIFO_PACKET_NUM)
 	{
 		//mdelay(500);
-	  printk("????mpcfifo_get_buf_ready/bd_p->head-l_tail==FIFO_PACKET_NUM????\n\r");
+	 // printk("????mpcfifo_get_buf_ready/bd_p->head-l_tail==FIFO_PACKET_NUM????\n\r");
 	  return 0;
 	}
   return 1;
@@ -159,7 +159,7 @@ static unsigned int mpcfifo_put(struct mpcfifo *rbd_p,const unsigned char *buf)
 	u16 i;
 	DATA_lbc  ps;
 	static all_data_size=0;
-	
+	static int count=0;
 	//Нет указателя на FIFO выходим из очереди
 	if(!rbd_p){return 0;}
 	
@@ -180,14 +180,13 @@ static unsigned int mpcfifo_put(struct mpcfifo *rbd_p,const unsigned char *buf)
 	rbd_p->tail=rbd_p->tail %rbd_p->N; //глубина очереди 32 пакет потом обнуляем хвост в 0 на начало.
 	
 	
-	//printk("mpcfifo_put/data_size_byte=%d\n\r",rbd_p->all_rtp_paload_data_size);
-	
+	printk("mpcfifo_put/data_size_byte=%d,count=%d\n\r",rbd_p->all_rtp_paload_data_size,count);
+	count=count+1;
 	return 1;
 	
 }
 /**************************************************************************************************
-Syntax:      	    static unsigned int mpcfifo_get(struct mpcfifo *rbd_p, void *obj		 
-Remark              
+Syntax:      	    static unsigned int mpcfifo_get(struct mpcfifo *rbd_p, void *obj		             
 Return Value:	    Returns 1 on success and negative value on failure.
  				    Value		 									Description
 				   -------------------------------------------------------------------------------------
@@ -205,11 +204,7 @@ static void mpcfifo_get(struct mpcfifo *rbd_p, void *obj)
 	
 	rbd_p->head =rbd_p->head %rbd_p->N;
 	
-	/*
 	local.size = rbd_p->q[rbd_p->head].size;
-	rbd_p->cur_get_packet_size=rbd_p->q[rbd_p->head].size;
-	*/
-	local.size = 62000;//rbd_p->q[rbd_p->head].size;
 	rbd_p->cur_get_packet_size=rbd_p->q[rbd_p->head].size;
 	
 	
@@ -220,10 +215,10 @@ static void mpcfifo_get(struct mpcfifo *rbd_p, void *obj)
 	
 	rbd_p->head++;
     
-
+    
 
 	//mdelay(500);
-	printk("++mpc_fifo_get_ok++\n\r");
+	//printk("++mpc_fifo_get_ok++\n\r");
    /*	
    printk("+FIFO_Dir0_rfirst   |0x%04x|0x%04x|0x%04x|0x%04x|0x%04x|0x%04x|+\n\r", local.data[0], local.data[1], local.data[2], local.data[3], local.data[4], local.data[5]);
    printk("+FIFO_Dir0_rlast    |0x%04x|0x%04x|0x%04x|0x%04x|0x%04x|0x%04x|+\n\r", local.data[rbd_p->cur_get_packet_size-6], local.data[rbd_p->cur_get_packet_size-5], local.data[rbd_p->cur_get_packet_size-4], local.data[rbd_p->cur_get_packet_size-3], local.data[rbd_p->cur_get_packet_size-2], local.data[rbd_p->cur_get_packet_size-1]);
@@ -265,10 +260,7 @@ unsigned long flags;
 //Set to the FIFO buffer
 	status=mpcfifo_put(rtp_input_fifo_stream1, in_buf);  
 //mpcfifo_print(fifo_tdm0_dir_read, 0);
-        	
-	
-	
-	
+   
 	spin_unlock_irqrestore(rtp_input_fifo_stream1->lock,flags);
 
 set_iteration_dir1++;	
@@ -292,20 +284,12 @@ unsigned long flags;
 		// printk(">>>>>>>>>>>>nbuf_get_datapacket_dir1|iter=%d<<<<<<<<<<<<<<<<\n\r",get_iteration_dir1);
 		 spin_lock_irqsave(rtp_input_fifo_stream1->lock,flags);
 		
-		 
-		 
-		 
 		 //берём из буфера пакет с данными 
 		 mpcfifo_get(rtp_input_fifo_stream1, in_buf);
 		 //берём размер пакета с данными
 		 *in_size=rtp_input_fifo_stream1->cur_get_packet_size;
-		 
-		 
-		 
-		 
+		  
 		 spin_unlock_irqrestore(rtp_input_fifo_stream1->lock,flags);
-		 
-		 
 		 
 		 /* 
 		 printk("+FIFO_Dir1_rfirst   |0x%02x|0x%02x|0x%02x|0x%04x|0x%02x|0x%02x|+\n\r",in_buf[0],in_buf[1],in_buf[2],in_buf[3],in_buf[4],in_buf[5]);
@@ -320,8 +304,6 @@ unsigned long flags;
 	 }
 	 else
 	 {
-		 
-		 
 		 memset(&in_buf,0x0000,sizeof(in_buf));
 		 *in_size=0x0000;
 		 //printk(">>>nbuf_get_datapacket_dir1|biffer_ne_gotov<<<\n\r");

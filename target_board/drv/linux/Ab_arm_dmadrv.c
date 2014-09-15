@@ -128,22 +128,96 @@ Remarks:			Start Testing EDMA Callback1 function
 ***************************************************************************************************/
 static inline unsigned char* get_data_array()
 {
-	 unsigned char  in_buf_rtp_dir1[64000];
+	 unsigned char  in_buf_rtp_dir1[1460];
+	 unsigned char  all_out_buf[64000];
+	 
 	 int  in_size_rtp_dir1=0;
+	 
+	 static int num_of_pcaket   =0;
+	 static int data_array_size =0;
+	 
+	 
+	 
 	 int l_i=2000; //Количество элементов Массива
 	 static int count =0;
 	 int i;
 	 static unsigned int mcasp_count=0;
 	 static unsigned int period_count=0;
-	 mcasp_count=mcasp_count+1;
+	 //mcasp_count=mcasp_count+1;
 	 
 	 unsigned int dma_src,dma_area;
 	 dma_area=dmab_slic->area;
 	 dma_src=dmab_slic->addr;
 	 
 
-     voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1);
-	  
+	 
+	 
+    // while(data_array_size<=63000)
+    // {	 
+	     
+	// for(i=0;i<=63000;i++)
+	// {	 
+	    //Есть голосовй Пакет в буфере
+    	 if(voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1)==1)
+    	 {	    
+	    
+	      data_array_size=in_size_rtp_dir1+data_array_size;
+	      num_of_pcaket= num_of_pcaket+1;
+	      
+	      //printk("OK_DATA__\n\r");
+	    
+	      
+	       // for(i=0;i<=in_size_rtp_dir1;i++)
+	       // {	 
+	       
+	             //all_out_buf[i+data_array_size]=in_buf_rtp_dir1[i];
+	        	 //all_out_buf[i+data_array_size]=0xaa;
+	              
+	      //  }
+	        memcpy(0xffd50000+data_array_size,&in_buf_rtp_dir1[0],in_size_rtp_dir1);                 
+	        printk("data_array_size=%d|curr_size=%d|packet_count=%d\n\r",data_array_size,in_size_rtp_dir1,num_of_pcaket);
+    	 }
+    	 //Нету данных в буфере нужно будет чем-то заполнять паузы
+    	 else
+    	 {
+    	
+    		//printk("NO_DATA_IN_FIFO_BUFFER\n\r");
+    		data_array_size = data_array_size;
+    		return 0; 
+    	 }	
+ 
+         //////////////////Ждём пока буффер заполниться окончательно тогда отдаём его назад  на проигрыш.
+    	 if(data_array_size==61440)
+    	 {
+    		  
+    		 printk("!!BUFFER_IS_FULL_SEND_TO_VOICE\n\r!!!");
+    		 data_array_size=0; 
+    		 //memcpy(0xffd50000,&in_buf_rtp_dir1[0],in_size_rtp_dir1);
+    		 
+    		// printk("{%d|0x%x}-",0,all_out_buf[0]);
+    		 
+    		
+    		 
+    		 //memcpy(0xffd50000,&stereo_voice_buffer_64[0],61440);
+    		 
+    		 // return &all_out_buf[0]; 	  
+		
+    	 }
+    	 
+    	 
+    	 
+       //}
+       //printk("data_array_size=0x%x|packet_count=%d\n\r",data_array_size,num_of_pcaket);
+       //data_array_size=0;
+       //return &in_buf_rtp_dir1[0];
+       
+    	 
+    	 
+  //return &all_out_buf[0];
+    	 //Накапливаем массив размером 64000
+     
+     
+     
 	   /*	 
 	   if(count<=l_i)
 	   {   	   
@@ -157,7 +231,7 @@ static inline unsigned char* get_data_array()
 	 
 	 //Распечатаем отладочный массив данных посмотрим что здесь у нас делаеться
 //return &in_buf_rtp_dir1[0];	
-return &stereo_voice_buffer_64[0]; //Возврвщаем локальный буфер для проверки
+//return &stereo_voice_buffer_64[0]; //Возврвщаем локальный буфер для проверки
 //return 0; //Возврвщаем локальный буфер для проверки
 }
 
@@ -169,8 +243,25 @@ Remarks:			timer functions
 ***************************************************************************************************/
 void timer1_routine(unsigned long data)
 {   
-   get_data_array(); 
-   //printk("+MOD_TIMER+\n\r");	
+	unsigned char *array;
+	
+	
+	//  printk("+MOD_TIMER+\n\r");	
+  //  if(get_data_array()==0)
+ //   {
+    	//printk("+timer1_NO_DATA_in_buffer+\n\r");
+ //   }
+ //   else
+ //   {
+    	//printk("+timer1_OK_get_data_array+\n\r");
+ //    }
+	
+	
+   
+   //printk("{%d|0x%x}-",0,array[0]);
+   
+
+   get_data_array();
    mod_timer(&timer1_read, jiffies + msecs_to_jiffies(100)); // restarting timer 100 тиковов    
 }
 
@@ -247,12 +338,12 @@ bool Init_Arm_EDMA_interface()
 	 
 	 //TIMER _INIT
      //Timer1
-     // init_timer(&timer1_read);
-     // timer1_read.function = timer1_routine;
-     // timer1_read.data = 1;
-     // timer1_read.expires = jiffies + msecs_to_jiffies(200);//2000 ms 
+      init_timer(&timer1_read);
+      timer1_read.function = timer1_routine;
+      timer1_read.data = 1;
+      timer1_read.expires = jiffies + msecs_to_jiffies(500);//2000 ms 
 	 
-     // add_timer(&timer1_read);  //Starting the timer1 
+      add_timer(&timer1_read);  //Starting the timer1 
 	  
 	 
 	 
@@ -293,14 +384,15 @@ static void enqueue_dma()
 
 	
 	//printk("prtd_period=%d,mcasp_count=%d\n\r",prtd_period,mcasp_count);
-	
+
+/*	
 	
 	if(prtd_period==0)
 	{
 		
 		if(mcasp_count==0)
 		{
-		printk("!!!!!!!Podstava!!!!!\n\r");
+		//printk("!!!!!!!Podstava!!!!!\n\r");
 		memcpy(0xffd50000,&stereo_voice_buffer[0],64000);
 		}
 	}
@@ -310,7 +402,7 @@ static void enqueue_dma()
 	if(prtd_period==0)
 	{	
 	
-		printk("mcasp_count=%d\n\r",mcasp_count);
+		//printk("mcasp_count=%d\n\r",mcasp_count);
 		
 		if(mcasp_count==0)
 		{	 
@@ -388,16 +480,9 @@ static void enqueue_dma()
 	
 	
 	
-	}
+	}*/
         
-  
-
-
-	
-	
-	
-	
-	
+ 
     period_size = 0xfa0;                  	        //snd_pcm_lib_period_bytes(substream);
 	dma_offset  = mcasp_count*period_size;          //prtd->period * period_size;
 	dma_pos     = dma_src+dma_offset;               //runtime->dma_addr+ dma_offset;
@@ -428,41 +513,8 @@ static void enqueue_dma()
      //быстро подсовывать данные сюда пока они не закончились
      
     
-    //memcpy(0xffd50000,get_data_array(),64000);
-       
-    /*     
-     if(period_count==0)
-     {	 
-     memcpy(0xffd50000,stereo_voice_buffer,64000);
-     }
-     if(period_count==1)
-     {	 
-     memcpy(0xffd50000,&stereo_voice_buffer[64000],64000);
-     } 
-     if(period_count==2)
-     {	 
-     memcpy(0xffd50000,&stereo_voice_buffer[128000],64000);
-     } 
-     if(period_count==3)
-     {	 
-     memcpy(0xffd50000,&stereo_voice_buffer[192000],64000);
-     } 
-     if(period_count==4)
-     {	 
-     memcpy(0xffd50000,&stereo_voice_buffer[256000],64000);
-     } 
-     if(period_count==5)
-     {	 
-     memcpy(0xffd50000,&stereo_voice_buffer[320000],64000);
-     } 
-     if(period_count==6)
-     {	 
-     memcpy(0xffd50000,&stereo_voice_buffer[384000],64000);
-     } 
- */    
-     
-    
-    
+     //memcpy(0xffd50000,get_data_array(),64000);
+      
 	 src = dma_pos;
 	 dst = 0x46400000;
 	 src_bidx = data_type;
@@ -510,64 +562,10 @@ static void enqueue_dma()
 	 
 	if(mcasp_count==15)
 	{
-	printk("!!!!!RESET_PERIOD_BUFFER=%d!!!!\n\r",prtd_period);
+	//printk("!!!!!RESET_PERIOD_BUFFER=%d!!!!\n\r",prtd_period);
 	mcasp_count=0;
 	prtd_period++;
     }
-	 
-	 
-	 
-	 
-#if 0 
-	if(mcasp_count==15)
-	{
-	    printk("!!!!!RESET_PERIOD_BUFFER=%d!!!!\n\r",period_count);
-		mcasp_count=0;	
-		
-		
-		     if(period_count==0)
-		     {	 
-		     memcpy(0xffd50000,&stereo_voice_buffer[0],64000);
-		     }
-		
-		     
-		     
-		     
-		     /*
-		     if(period_count==1)
-		     {	 
-		     memcpy(0xffd50000,&stereo_voice_buffer[64000],64000);
-		     } 
-	
-		     
-		     if(period_count==2)
-		     {	 
-		     memcpy(0xffd50000,&stereo_voice_buffer[128000],64000);
-		     } 
-		     if(period_count==3)
-		     {	 
-		     memcpy(0xffd50000,&stereo_voice_buffer[192000],64000);
-		     } 
-		     if(period_count==4)
-		     {	 
-		     memcpy(0xffd50000,&stereo_voice_buffer[256000],64000);
-		     } 
-		     if(period_count==5)
-		     {	 
-		     memcpy(0xffd50000,&stereo_voice_buffer[320000],64000);
-		     } 
-		     if(period_count==6)
-		     {	 
-		     memcpy(0xffd50000,&stereo_voice_buffer[384000],64000);
-		     } 
-		*/
-		//memcpy(dma_area/*0xffd50000*/,get_data_array(),63971);
-		period_count++;  
-	}
-#endif	
-	 
-	 
-	
 	 
 }
 
@@ -652,7 +650,7 @@ bool Clear_Arm_EDMA_interface()
 	 snd_dma_free_pages(dmab_slic);
      edma_free_channel(dma_channel);
      edma_free_slot(dma_slot);
- 	// del_timer_sync(&timer1_read);              /* Deleting the timer */ 
+ 	 del_timer_sync(&timer1_read);              /* Deleting the timer */ 
      
      return 1;
 }
