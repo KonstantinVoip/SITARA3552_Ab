@@ -12,9 +12,12 @@
 #define GFP_MASK               GFP_KERNEL
 //#define FIFO_PACKET_SIZE_BYTE  1514          
 //#define FIFO_PACKET_NUM        32
-#define FIFO_PACKET_SIZE_BYTE  1460          
-#define FIFO_PACKET_NUM        50
+//#define FIFO_PACKET_SIZE_BYTE  1460          
+//#define FIFO_PACKET_NUM        50
 
+/***Голосовые Пакеты***/
+#define FIFO_PACKET_SIZE_BYTE  4000          
+#define FIFO_PACKET_NUM        16
 
 
 /*****************************************************************************/
@@ -93,14 +96,17 @@ struct mpcfifo *mpcfifo_init(unsigned int obj_size,unsigned int obj_num , gfp_t 
 	ret->cur_put_packet_size=0;
 	ret->cur_get_packet_size=0;
 
-	
 	ret->lock = lock;
-	
 	ret->fifo_pusto=0;
 	ret->fifo_zapolneno=0;
+    //те настройки которые относяться к голосовому блоку передачи данных
+	ret->voice_block_size           =4000;        //Размер равен 4000 байт минимального блока  на  проигрыш
+	ret->all_num_of_voice_blocks    =0;    	      //количество пришедших голосовых блоков по 4000
+	ret->ostatok_ot_voice_block_size=0;			  //если не равномерно склеиваються блоки                          
 	
-	ret->all_rtp_paload_data_size=0;
 	
+	
+
 	printk("+mpcfifo_init_alocate_memory_for_structure+\n\r");	
 	return (ret);
 	
@@ -158,31 +164,78 @@ static unsigned int mpcfifo_put(struct mpcfifo *rbd_p,const unsigned char *buf)
 {
 	u16 i;
 	DATA_lbc  ps;
-	static all_data_size=0;
-	static int count=0;
+	//static all_data_size=0;
+	static int counts_nakopitel_bytes_to_voice_block=0;
+	static int counts_nakopitel_bytes_kotorie_popali=0;  
+	
 	//Нет указателя на FIFO выходим из очереди
 	if(!rbd_p){return 0;}
 	
-	//Естественно нужна защита от одновременного доступа к даннымю потом сделаю! пока так.
-	ps.size=rbd_p->cur_put_packet_size;
-	all_data_size=all_data_size+rbd_p->cur_put_packet_size;
-	rbd_p->all_rtp_paload_data_size=all_data_size;
 	
-	
-	for(i=0;i<ps.size;i++)
+	//Складируем здесь данные до получения 4000
+	counts_nakopitel_bytes_to_voice_block=counts_nakopitel_bytes_to_voice_block+rbd_p->cur_put_packet_size;
+	//Блок накапливаем данные из нескольких пакетов
+	if(counts_nakopitel_bytes_to_voice_block<=4000)
 	{
-		ps.data[i]=buf[i];   
+		counts_nakopitel_bytes_kotorie_popali=counts_nakopitel_bytes_kotorie_popali+rbd_p->cur_put_packet_size;	
+		
+		//Заполняем блок данными пока очень грубо будет много теряться данных
+		for(i=0;i<rbd_p->cur_put_packet_size;i++)
+		{
+			//ps.data[i+counts_nakopitel_bytes_to_voice_block]=buf[i];   
+			  ps.data[i+counts_nakopitel_bytes_kotorie_popali]=buf[i];
+		}
+	  //printk("curr_packet_size=%d_bytes\n\r",rbd_p->cur_put_packet_size);
+	 //блок не заполнен пока складируем пакеты	
+	 return 0;	
 	}
 	
+	///////////////////////////////////////////////////////////////////////////////////
+	//Здесь должен быть конечно алгоритм подсчёта остатка и дописывть его нужно !!!попозже сделаю его пока потери будут
 	
-	rbd_p->q[rbd_p->tail++]=ps;
+	
+	//Блок готов забирайте его из очереди
+	if(counts_nakopitel_bytes_to_voice_block>=4000)
+	{
+		//Пишу размер блока сюда равен около 4000
+		ps.size=counts_nakopitel_bytes_kotorie_popali;//counts_nakopitel_bytes_to_voice_block;
+		//Заполняем блок данными пока очень грубо будет много теряться данных
+		rbd_p->q[rbd_p->tail++]=ps;
+	    //rbd_p->tail=rbd_p->N -rbd_p->head;
+	    rbd_p->tail=rbd_p->tail %rbd_p->N; //глубина очереди 16 блоков.
+		
+	    
+	    //printk("_BUFFER_IS_FULL_VOICE_ELEMETNT=%d_size=%d_\n\r",rbd_p->all_num_of_voice_blocks,counts_nakopitel_bytes_to_voice_block);
+	    
+	    
+	    rbd_p->all_num_of_voice_blocks++;
+	    //обнуляем счётчик байт на ноль 
+	    counts_nakopitel_bytes_to_voice_block=0;
+	    counts_nakopitel_bytes_kotorie_popali=0;
+	    
+	  	    
+	    //блок заполнен всё ok забираем его к себе  назад
+	    return 1;
+	    
+	}
+	
+	//Естественно нужна защита от одновременного доступа к даннымю потом сделаю! пока так.
+	//Размер текущего пакета который в очередь  кладу.
+	//ps.size=rbd_p->cur_put_packet_size;
+	//all_data_size=all_data_size+rbd_p->cur_put_packet_size;
+	//rbd_p->all_rtp_paload_data_size=all_data_size;
+	/*
+	ret->voice_block_size           =4000;        //Размер равен 4000 байт минимального блока  на  проигрыш
+	ret->all_num_of_voice_blocks    =0;    	      //количество пришедших голосовых блоков по 4000
+	ret->ostatok_ot_voice_block_size=0;			  //если не равномерно склеиваються блоки  
+	*/	
+	/*Нужно обнулять и переставлять на следующий элемент только когда накопиться 4000 байт из нескольких пакетов */
+	//rbd_p->q[rbd_p->tail++]=ps;
 	//rbd_p->tail=rbd_p->N -rbd_p->head;
-	rbd_p->tail=rbd_p->tail %rbd_p->N; //глубина очереди 32 пакет потом обнуляем хвост в 0 на начало.
-	
-	
-	printk("mpcfifo_put/data_size_byte=%d,count=%d\n\r",rbd_p->all_rtp_paload_data_size,count);
-	count=count+1;
-	return 1;
+	//rbd_p->tail=rbd_p->tail %rbd_p->N; //глубина очереди 16 блоков.
+	//printk("mpcfifo_put/data_size_byte=%d,count=%d\n\r",rbd_p->all_rtp_paload_data_size,count);
+	//count=count+1;
+	//return 1;
 	
 }
 /**************************************************************************************************
@@ -202,8 +255,9 @@ static void mpcfifo_get(struct mpcfifo *rbd_p, void *obj)
 	//printk("rbd_p->all_rtp_paload_data_size=%d\n\r",rbd_p->all_rtp_paload_data_size);
 	
 	
-	rbd_p->head =rbd_p->head %rbd_p->N;
 	
+	//тут видимо ничего не меняем
+	rbd_p->head =rbd_p->head %rbd_p->N;
 	local.size = rbd_p->q[rbd_p->head].size;
 	rbd_p->cur_get_packet_size=rbd_p->q[rbd_p->head].size;
 	
@@ -216,6 +270,8 @@ static void mpcfifo_get(struct mpcfifo *rbd_p, void *obj)
 	rbd_p->head++;
     
     
+	
+	
 
 	//mdelay(500);
 	//printk("++mpc_fifo_get_ok++\n\r");

@@ -59,10 +59,10 @@
 /*****************************************************************************/
 /*	GLOBAL TIMER STRUCTURES     					     				 	 */
 /*****************************************************************************/
-struct timer_list timer1_read,timer2_write;          //default timer   
+struct timer_list timer1_read;          //default timer   
 static struct hrtimer hr_timer;           //high resolution timer 
-
-
+///////////////TIMER TEST FUNCTION//////////
+static inline ktime_t ktime_now(void);
 
 
 
@@ -107,16 +107,19 @@ extern int  davinci_mcasp_trigger(struct snd_pcm_substream *substream,int cmd, s
 #define DMA_FN_OUT printk(KERN_INFO "[%s]: end\n",__FUNCTION__)
 
 
-
-
-
-
-
-
-
-
-
-
+/**************************************************************************************************
+Syntax:      	    static inline ktime_t ktime_now(void)
+Parameters:     	void 
+Remarks:			timer functions 
+***************************************************************************************************/
+static inline ktime_t ktime_now(void)
+{
+struct timespec ts;
+ktime_get_ts(&ts);
+//printk(".%.9ld[ns]",ts.tv_nsec);          //nano second 
+  printk("%lld[s]-",(long long)ts.tv_sec);  //seconds
+//return timespec_to_ktime(ts);
+}
 
 
 
@@ -128,11 +131,16 @@ Remarks:			Start Testing EDMA Callback1 function
 ***************************************************************************************************/
 static inline unsigned char* get_data_array()
 {
-	 unsigned char  in_buf_rtp_dir1[1460];
-	 unsigned char  all_out_buf[64000];
-	 
+	 unsigned char  in_buf_rtp_dir1[4096];//размер блока приблизительный
 	 int  in_size_rtp_dir1=0;
+	 //Пакеты
+	 int period_size=4000;
+	 int array_current_smeschenie=0;
+	 static int start=0;
 	 
+	 
+	 
+	 //unsigned char  all_out_buf[8000];
 	 static int num_of_pcaket   =0;
 	 static int data_array_size =0;
 	 
@@ -143,81 +151,103 @@ static inline unsigned char* get_data_array()
 	 int i;
 	 static unsigned int mcasp_count=0;
 	 static unsigned int period_count=0;
-	 //mcasp_count=mcasp_count+1;
+
 	 
 	 unsigned int dma_src,dma_area;
 	 dma_area=dmab_slic->area;
 	 dma_src=dmab_slic->addr;
 	 
+	
+	 
 
+	 mcasp_count=mcasp_count+1;
+	 //Обработка ситуации первого старта нужно записать в НОЛЬ
+	 if(start==0)
+	 {
+		 printk("_FIRST_Start_\n\r");
+		 mcasp_count=0; 
+		 start++;
+		 period_count=0;
+	 }
+	
+	 if(mcasp_count==16)
+	 {
+	    mcasp_count=0;
+	    period_count=64000+period_count;
+	                               
+	 }  //обнуляем счётчик начинаем заново
+      
 	 
 	 
-    // while(data_array_size<=63000)
-    // {	 
-	     
-	// for(i=0;i<=63000;i++)
-	// {	 
-	    //Есть голосовй Пакет в буфере
+	 array_current_smeschenie=mcasp_count*period_size;
+	 
+	 //Функция для работы  со  статическим массивом
+	 //memcpy(0xffd50000+array_current_smeschenie,&stereo_voice_buffer[(mcasp_count*period_size)+period_count],period_size);
+	 //printk("mcasp=%d|smeschenie=%d|period=%d\n\r",mcasp_count,array_current_smeschenie,period_count,ktime_now());
+	 
+	
+	 if(voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1)==1)
+	 {	
+	 
+	     printk("in_size_rtp_dir1=%d|packet_count=%d\n\r",in_size_rtp_dir1,num_of_pcaket++);
+	     memcpy(0xffd50000+array_current_smeschenie,in_buf_rtp_dir1,period_size);
+	   //memcpy(0xffd50000+array_current_smeschenie,&stereo_voice_buffer[(mcasp_count*period_size)+period_count],period_size);  
+		 
+		 
+	 }
+	 else
+	 {
+		 
+		  //printk("NO_DATA_IN_FIFO_BUFFER\n\r");
+		 
+	 }
+	 
+	 
+	 //Кусок который принимат данные из FIFO ethernet
+#if 0	 
+	    //Есть голосовй Пакет в буфере FIFO
     	 if(voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1)==1)
     	 {	    
 	    
 	      data_array_size=in_size_rtp_dir1+data_array_size;
 	      num_of_pcaket= num_of_pcaket+1;
+	     
+	      //printk("data_array_size=%d|in_size_rtp_dir1=%d|packet_count=%d\n\r",data_array_size,in_size_rtp_dir1,num_of_pcaket);
+	      //printk("data_array_size=%d|\n\r",data_array_size);
+	      //memcpy(0xffd50000+data_array_size,&in_buf_rtp_dir1[0],in_size_rtp_dir1);                 
 	      
-	      //printk("OK_DATA__\n\r");
-	    
 	      
-	       // for(i=0;i<=in_size_rtp_dir1;i++)
-	       // {	 
-	       
-	             //all_out_buf[i+data_array_size]=in_buf_rtp_dir1[i];
-	        	 //all_out_buf[i+data_array_size]=0xaa;
-	              
-	      //  }
-	        memcpy(0xffd50000+data_array_size,&in_buf_rtp_dir1[0],in_size_rtp_dir1);                 
-	        printk("data_array_size=%d|curr_size=%d|packet_count=%d\n\r",data_array_size,in_size_rtp_dir1,num_of_pcaket);
+	     // data_array_size=in_size_rtp_dir1+data_array_size;
+	      //printk("data_array_size=%d|curr_size=%d|packet_count=%d\n\r",data_array_size,in_size_rtp_dir1,num_of_pcaket);
     	 }
     	 //Нету данных в буфере нужно будет чем-то заполнять паузы
     	 else
     	 {
-    	
-    		//printk("NO_DATA_IN_FIFO_BUFFER\n\r");
-    		data_array_size = data_array_size;
+    	  // printk("NO_DATA_IN_FIFO_BUFFER\n\r");
+    	   //memcpy(0xffd50000,0x00,32000);
+    	   	 
+    		//Зачищаем область Данных которую проиграли
+    	   
+    		//data_array_size = data_array_size;
     		return 0; 
     	 }	
  
+    	 
          //////////////////Ждём пока буффер заполниться окончательно тогда отдаём его назад  на проигрыш.
-    	 if(data_array_size==61440)
+    	 //размер сэмпла находиться в заголовке wavе файла
+    	 if(data_array_size==46986)
     	 {
-    		  
     		 printk("!!BUFFER_IS_FULL_SEND_TO_VOICE\n\r!!!");
     		 data_array_size=0; 
-    		 //memcpy(0xffd50000,&in_buf_rtp_dir1[0],in_size_rtp_dir1);
-    		 
-    		// printk("{%d|0x%x}-",0,all_out_buf[0]);
-    		 
-    		
-    		 
-    		 //memcpy(0xffd50000,&stereo_voice_buffer_64[0],61440);
-    		 
-    		 // return &all_out_buf[0]; 	  
-		
+    		 memcpy(0xffd50000,&null_buf[0],64000);
+    		 //Зачищаем область проигралиодин СЭМПЛ 64000К  
+    	 
     	 }
-    	 
-    	 
-    	 
-       //}
-       //printk("data_array_size=0x%x|packet_count=%d\n\r",data_array_size,num_of_pcaket);
-       //data_array_size=0;
-       //return &in_buf_rtp_dir1[0];
-       
-    	 
-    	 
-  //return &all_out_buf[0];
-    	 //Накапливаем массив размером 64000
+    	  
      
-     
-     
+    	 
+    	//Распечатка массива 
+    	 
 	   /*	 
 	   if(count<=l_i)
 	   {   	   
@@ -228,7 +258,9 @@ static inline unsigned char* get_data_array()
 		     count++;
 		 }
 	   }*/	 
-	 
+
+#endif    	 
+    	 
 	 //Распечатаем отладочный массив данных посмотрим что здесь у нас делаеться
 //return &in_buf_rtp_dir1[0];	
 //return &stereo_voice_buffer_64[0]; //Возврвщаем локальный буфер для проверки
@@ -243,26 +275,11 @@ Remarks:			timer functions
 ***************************************************************************************************/
 void timer1_routine(unsigned long data)
 {   
-	unsigned char *array;
-	
-	
-	//  printk("+MOD_TIMER+\n\r");	
-  //  if(get_data_array()==0)
- //   {
-    	//printk("+timer1_NO_DATA_in_buffer+\n\r");
- //   }
- //   else
- //   {
-    	//printk("+timer1_OK_get_data_array+\n\r");
- //    }
-	
-	
-   
-   //printk("{%d|0x%x}-",0,array[0]);
-   
+
+   //printk("+MOD_TIMER+\n\r");	
 
    get_data_array();
-   mod_timer(&timer1_read, jiffies + msecs_to_jiffies(100)); // restarting timer 100 тиковов    
+   mod_timer(&timer1_read, jiffies + msecs_to_jiffies(125)); // restarting timer  через  100 милисекунд  если я не ошибаюсь
 }
 
 
@@ -275,8 +292,8 @@ Remarks:			Start Testing EDMA Callback1 function
 ***************************************************************************************************/
 static void callback1(unsigned lch, u16 ch_status, void *data)
 {
-
-	//printk("+dma_irq+\n\r");
+    static int irq_count=0;
+	//printk("+dma_irq=%d|\n\r",irq_count++,ktime_now());
 	
 	if (unlikely(ch_status != DMA_COMPLETE))
 	{
@@ -341,7 +358,7 @@ bool Init_Arm_EDMA_interface()
       init_timer(&timer1_read);
       timer1_read.function = timer1_routine;
       timer1_read.data = 1;
-      timer1_read.expires = jiffies + msecs_to_jiffies(500);//2000 ms 
+      timer1_read.expires = jiffies + msecs_to_jiffies(125);//Старт таймера через 125[мс]
 	 
       add_timer(&timer1_read);  //Starting the timer1 
 	  
@@ -645,12 +662,13 @@ bool Clear_Arm_EDMA_interface()
 {
   	
 	//STOP MCASP_DEVICE
+	 del_timer_sync(&timer1_read);              /* Deleting the timer */      
 	 davinci_mcasp_trigger(l_rsubstream,SNDRV_PCM_TRIGGER_STOP,l_cpu_dai);  
 	 snd_soc_dapm_stream_event(l_pcm->private_data,playback_stream_name,SND_SOC_DAPM_STREAM_STOP);
 	 snd_dma_free_pages(dmab_slic);
      edma_free_channel(dma_channel);
      edma_free_slot(dma_slot);
- 	 del_timer_sync(&timer1_read);              /* Deleting the timer */ 
+
      
      return 1;
 }

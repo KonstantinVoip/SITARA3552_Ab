@@ -65,14 +65,18 @@ void voice_buf_set_data_in_tdm_stream1 (const unsigned char *in_buf ,const int i
 /******************************************************************************/
 typedef struct description_packet
 {
- int size;	
- int rtp_payload_size;
- unsigned char data[1460];
+ int size; 
+ int cur_rtp_voice_payload_size;
+ unsigned char data[4000];
  
 }DATA_lbc;
 
+
+
+
+
 struct mpcfifo {
-	DATA_lbc      q[50];
+	DATA_lbc      q[16];
 	unsigned int  head;
 	unsigned int  tail;
     int           N;
@@ -80,8 +84,11 @@ struct mpcfifo {
     int           cur_get_packet_size;
     int           fifo_pusto;
     int           fifo_zapolneno;
-    int           all_rtp_paload_data_size; 
-    
+    //те настройки которые относяться к голосовому блоку передачи данных
+    int           voice_block_size;
+    int           all_num_of_voice_blocks;
+    int           ostatok_ot_voice_block_size;
+    //СПИН блокировки
     spinlock_t    *lock;
 };
 
