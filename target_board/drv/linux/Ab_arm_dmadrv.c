@@ -146,7 +146,7 @@ static inline unsigned char* get_data_array()
 	 
 	 
 	 
-	 int l_i=2000; //Количество элементов Массива
+	 int l_i=200; //Количество элементов Массива
 	 static int count =0;
 	 int i;
 	 static unsigned int mcasp_count=0;
@@ -186,19 +186,30 @@ static inline unsigned char* get_data_array()
 	 //printk("mcasp=%d|smeschenie=%d|period=%d\n\r",mcasp_count,array_current_smeschenie,period_count,ktime_now());
 	 
 	
+	 
 	 if(voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1)==1)
 	 {	
 	 
 	     printk("in_size_rtp_dir1=%d|packet_count=%d\n\r",in_size_rtp_dir1,num_of_pcaket++);
-	     memcpy(0xffd50000+array_current_smeschenie,in_buf_rtp_dir1,period_size);
-	   //memcpy(0xffd50000+array_current_smeschenie,&stereo_voice_buffer[(mcasp_count*period_size)+period_count],period_size);  
-		 
+	     
+		 memcpy(0xffd50000+array_current_smeschenie,in_buf_rtp_dir1,period_size);
+	   
+	     //memcpy(0xffd50000+array_current_smeschenie,&stereo_voice_buffer[(mcasp_count*period_size)+period_count],period_size);  
+	     	
+		 /*
+		 for(i=0;i<=l_i;i++)
+		 {
+				// printk("{%d|0x%x}-",i,stereo_voice_buffer[i]); 
+				 printk("{%d|0x%x}-",i,in_buf_rtp_dir1[i]);
+			     count++;
+		 }*/
+	   
 		 
 	 }
 	 else
 	 {
 		 
-		  //printk("NO_DATA_IN_FIFO_BUFFER\n\r");
+		   //printk("NO_DATA_IN_FIFO_BUFFER\n\r");
 		 
 	 }
 	 

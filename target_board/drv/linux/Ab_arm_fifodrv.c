@@ -16,7 +16,10 @@
 //#define FIFO_PACKET_NUM        50
 
 /***Голосовые Пакеты***/
-#define FIFO_PACKET_SIZE_BYTE  4000          
+//#define FIFO_PACKET_SIZE_BYTE  4000          
+//#define FIFO_PACKET_NUM        16
+
+#define FIFO_PACKET_SIZE_BYTE  4096          
 #define FIFO_PACKET_NUM        16
 
 
@@ -139,7 +142,7 @@ static bool mpcfifo_get_buf_ready(struct mpcfifo *rbd_p)
 	if (l_tail -rbd_p->head ==0)
 	{
 		//mdelay(500);
-	 // printk("????mpcfifo_get_buf_ready/l_tail -rbd_p->head=0????\n\r");
+	    // printk("????mpcfifo_get_buf_ready/l_tail -rbd_p->head=0????\n\r");
 		return 0;
 	}
 	//schetchic1=rbd_p->head;//-rbd_p->tail;
@@ -149,6 +152,7 @@ static bool mpcfifo_get_buf_ready(struct mpcfifo *rbd_p)
 	 // printk("????mpcfifo_get_buf_ready/bd_p->head-l_tail==FIFO_PACKET_NUM????\n\r");
 	  return 0;
 	}
+  //printk("mpcfifo_get_buf_ready/return_1\n\r");
   return 1;
 }
 
@@ -167,25 +171,76 @@ static unsigned int mpcfifo_put(struct mpcfifo *rbd_p,const unsigned char *buf)
 	//static all_data_size=0;
 	static int counts_nakopitel_bytes_to_voice_block=0;
 	static int counts_nakopitel_bytes_kotorie_popali=0;  
-	
+	static int packet_count=0;
+	static int schetchik_vhogdenia=0;
+	static int local_count_i=0;
 	//Нет указателя на FIFO выходим из очереди
 	if(!rbd_p){return 0;}
 	
 	
 	//Складируем здесь данные до получения 4000
 	counts_nakopitel_bytes_to_voice_block=counts_nakopitel_bytes_to_voice_block+rbd_p->cur_put_packet_size;
+	packet_count=packet_count+1;
+
+	//printk("packet=%d,cur_data_size=%d,all_data_aize=%d\n\r",packet_count,rbd_p->cur_put_packet_size,counts_nakopitel_bytes_to_voice_block);
+	
+	
+	//Заполняем три первых пакета
+	if(packet_count<=3)
+	{
+		
+	  //printk("packet=%d,cur_data_size=%d,all_data_aize=%d\n\r",packet_count,rbd_p->cur_put_packet_size,counts_nakopitel_bytes_to_voice_block);
+		
+		
+		//Заполняем блок данными пока очень грубо будет много теряться данных
+		for(i=0;i<rbd_p->cur_put_packet_size;i++)
+		{
+			    ps.data[i+schetchik_vhogdenia]=buf[i];   
+			//  ps.data[i+counts_nakopitel_bytes_kotorie_popali]=buf[i];
+			    local_count_i++;
+    
+		}
+	 // printk("schtchik_massiva=%d\n\r",schetchik_vhogdenia);
+	  schetchik_vhogdenia=local_count_i;
+	 }
+	
+	if(packet_count==3)
+	{
+		
+		  printk("PACKET==3 GET BUFFER\n\r");
+		//Пишу размер блока сюда равен около 4000
+		  ps.size=counts_nakopitel_bytes_to_voice_block;//counts_nakopitel_bytes_to_voice_block;
+		//Заполняем блок данными пока очень грубо будет много теряться данных
+		  rbd_p->q[rbd_p->tail++]=ps;
+	      rbd_p->tail=rbd_p->tail %rbd_p->N; //глубина очереди 2 блока.
+	    
+	      rbd_p->all_num_of_voice_blocks++;
+	    //обнуляем счётчик байт на ноль 
+	      counts_nakopitel_bytes_to_voice_block=0;
+	      counts_nakopitel_bytes_kotorie_popali=0;
+	      packet_count=0; 	    
+	      local_count_i=0;
+	      schetchik_vhogdenia=0;    
+	
+	}
+	
+	
+	
+#if 0	
+	
+	//printk("counts_nakopitel_bytes_to_voice_block=%d\n\r",counts_nakopitel_bytes_to_voice_block);
 	//Блок накапливаем данные из нескольких пакетов
-	if(counts_nakopitel_bytes_to_voice_block<=4000)
+	if(counts_nakopitel_bytes_to_voice_block<=4096)
 	{
 		counts_nakopitel_bytes_kotorie_popali=counts_nakopitel_bytes_kotorie_popali+rbd_p->cur_put_packet_size;	
 		
 		//Заполняем блок данными пока очень грубо будет много теряться данных
 		for(i=0;i<rbd_p->cur_put_packet_size;i++)
 		{
-			//ps.data[i+counts_nakopitel_bytes_to_voice_block]=buf[i];   
-			  ps.data[i+counts_nakopitel_bytes_kotorie_popali]=buf[i];
+			    ps.data[i+counts_nakopitel_bytes_to_voice_block]=0xaa;//buf[i];   
+			//  ps.data[i+counts_nakopitel_bytes_kotorie_popali]=buf[i];
 		}
-	  //printk("curr_packet_size=%d_bytes\n\r",rbd_p->cur_put_packet_size);
+	 // printk("curr_packet_size=%d_bytes\n\r",rbd_p->cur_put_packet_size);
 	 //блок не заполнен пока складируем пакеты	
 	 return 0;	
 	}
@@ -195,7 +250,7 @@ static unsigned int mpcfifo_put(struct mpcfifo *rbd_p,const unsigned char *buf)
 	
 	
 	//Блок готов забирайте его из очереди
-	if(counts_nakopitel_bytes_to_voice_block>=4000)
+	if(counts_nakopitel_bytes_to_voice_block==4096)
 	{
 		//Пишу размер блока сюда равен около 4000
 		ps.size=counts_nakopitel_bytes_kotorie_popali;//counts_nakopitel_bytes_to_voice_block;
@@ -205,7 +260,7 @@ static unsigned int mpcfifo_put(struct mpcfifo *rbd_p,const unsigned char *buf)
 	    rbd_p->tail=rbd_p->tail %rbd_p->N; //глубина очереди 16 блоков.
 		
 	    
-	    //printk("_BUFFER_IS_FULL_VOICE_ELEMETNT=%d_size=%d_\n\r",rbd_p->all_num_of_voice_blocks,counts_nakopitel_bytes_to_voice_block);
+	    printk("_BUFFER_IS_FULL_VOICE_ELEMETNT=%d_size=%d_\n\r",rbd_p->all_num_of_voice_blocks,counts_nakopitel_bytes_to_voice_block);
 	    
 	    
 	    rbd_p->all_num_of_voice_blocks++;
@@ -213,11 +268,11 @@ static unsigned int mpcfifo_put(struct mpcfifo *rbd_p,const unsigned char *buf)
 	    counts_nakopitel_bytes_to_voice_block=0;
 	    counts_nakopitel_bytes_kotorie_popali=0;
 	    
-	  	    
 	    //блок заполнен всё ok забираем его к себе  назад
 	    return 1;
 	    
 	}
+#endif 
 	
 	//Естественно нужна защита от одновременного доступа к даннымю потом сделаю! пока так.
 	//Размер текущего пакета который в очередь  кладу.
@@ -261,6 +316,9 @@ static void mpcfifo_get(struct mpcfifo *rbd_p, void *obj)
 	local.size = rbd_p->q[rbd_p->head].size;
 	rbd_p->cur_get_packet_size=rbd_p->q[rbd_p->head].size;
 	
+	//printk("mpcfifo_get/local.size=%d,rbd_p->head=%d\n\r",local.size,rbd_p->head);
+	
+	
 	
 	for(i=0;i<local.size;i++)
 	{
@@ -269,10 +327,7 @@ static void mpcfifo_get(struct mpcfifo *rbd_p, void *obj)
 	
 	rbd_p->head++;
     
-    
-	
-	
-
+   
 	//mdelay(500);
 	//printk("++mpc_fifo_get_ok++\n\r");
    /*	

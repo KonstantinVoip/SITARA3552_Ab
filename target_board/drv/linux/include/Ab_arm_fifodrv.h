@@ -67,7 +67,7 @@ typedef struct description_packet
 {
  int size; 
  int cur_rtp_voice_payload_size;
- unsigned char data[4000];
+ unsigned char data[4096];
  
 }DATA_lbc;
 
