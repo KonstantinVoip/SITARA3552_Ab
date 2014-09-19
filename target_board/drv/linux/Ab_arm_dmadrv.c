@@ -131,13 +131,13 @@ Remarks:			Start Testing EDMA Callback1 function
 ***************************************************************************************************/
 static inline unsigned char* get_data_array()
 {
-	 unsigned char  in_buf_rtp_dir1[4096];//размер блока приблизительный
+	 unsigned char  in_buf_rtp_dir1[4380];//размер блока приблизительный
 	 int  in_size_rtp_dir1=0;
 	 //Пакеты
 	 int period_size=4000;
 	 int array_current_smeschenie=0;
 	 static int start=0;
-	 
+	 static int prosto_count=0;
 	 
 	 
 	 //unsigned char  all_out_buf[8000];
@@ -186,13 +186,23 @@ static inline unsigned char* get_data_array()
 	 //printk("mcasp=%d|smeschenie=%d|period=%d\n\r",mcasp_count,array_current_smeschenie,period_count,ktime_now());
 	 
 	
-	 
+//#if 0	 
 	 if(voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1)==1)
 	 {	
 	 
-	     printk("in_size_rtp_dir1=%d|packet_count=%d\n\r",in_size_rtp_dir1,num_of_pcaket++);
-	     
-		 memcpy(0xffd50000+array_current_smeschenie,in_buf_rtp_dir1,period_size);
+	     /*
+		 prosto_count=prosto_count+1;
+		 
+		 /
+		 if(prosto_count==6)
+		 {
+			 printk("-----------PROSTO_KOUNT--------\n\r");
+		 }
+		  */
+		 
+		      
+		  //printk("in_size_rtp_dir1=%d|packet_count=%d\n\r",in_size_rtp_dir1,num_of_pcaket++);
+		   memcpy(0xffd50000+array_current_smeschenie,in_buf_rtp_dir1,period_size);
 	   
 	     //memcpy(0xffd50000+array_current_smeschenie,&stereo_voice_buffer[(mcasp_count*period_size)+period_count],period_size);  
 	     	
@@ -207,70 +217,14 @@ static inline unsigned char* get_data_array()
 		 
 	 }
 	 else
-	 {
+	{
 		 
 		   //printk("NO_DATA_IN_FIFO_BUFFER\n\r");
 		 
 	 }
 	 
-	 
-	 //Кусок который принимат данные из FIFO ethernet
-#if 0	 
-	    //Есть голосовй Пакет в буфере FIFO
-    	 if(voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1)==1)
-    	 {	    
-	    
-	      data_array_size=in_size_rtp_dir1+data_array_size;
-	      num_of_pcaket= num_of_pcaket+1;
-	     
-	      //printk("data_array_size=%d|in_size_rtp_dir1=%d|packet_count=%d\n\r",data_array_size,in_size_rtp_dir1,num_of_pcaket);
-	      //printk("data_array_size=%d|\n\r",data_array_size);
-	      //memcpy(0xffd50000+data_array_size,&in_buf_rtp_dir1[0],in_size_rtp_dir1);                 
-	      
-	      
-	     // data_array_size=in_size_rtp_dir1+data_array_size;
-	      //printk("data_array_size=%d|curr_size=%d|packet_count=%d\n\r",data_array_size,in_size_rtp_dir1,num_of_pcaket);
-    	 }
-    	 //Нету данных в буфере нужно будет чем-то заполнять паузы
-    	 else
-    	 {
-    	  // printk("NO_DATA_IN_FIFO_BUFFER\n\r");
-    	   //memcpy(0xffd50000,0x00,32000);
-    	   	 
-    		//Зачищаем область Данных которую проиграли
-    	   
-    		//data_array_size = data_array_size;
-    		return 0; 
-    	 }	
- 
-    	 
-         //////////////////Ждём пока буффер заполниться окончательно тогда отдаём его назад  на проигрыш.
-    	 //размер сэмпла находиться в заголовке wavе файла
-    	 if(data_array_size==46986)
-    	 {
-    		 printk("!!BUFFER_IS_FULL_SEND_TO_VOICE\n\r!!!");
-    		 data_array_size=0; 
-    		 memcpy(0xffd50000,&null_buf[0],64000);
-    		 //Зачищаем область проигралиодин СЭМПЛ 64000К  
-    	 
-    	 }
-    	  
-     
-    	 
-    	//Распечатка массива 
-    	 
-	   /*	 
-	   if(count<=l_i)
-	   {   	   
-		 for(i=0;i<=l_i;i++)
-		 {
-			// printk("{%d|0x%x}-",i,stereo_voice_buffer[i]); 
-			 //printk("{%d|0x%x}-",i,in_buf_rtp_dir1[i]);
-		     count++;
-		 }
-	   }*/	 
-
-#endif    	 
+//#endif	 
+  	 
     	 
 	 //Распечатаем отладочный массив данных посмотрим что здесь у нас делаеться
 //return &in_buf_rtp_dir1[0];	
@@ -291,6 +245,8 @@ void timer1_routine(unsigned long data)
 
    get_data_array();
    mod_timer(&timer1_read, jiffies + msecs_to_jiffies(125)); // restarting timer  через  100 милисекунд  если я не ошибаюсь
+
+  //mod_timer(&timer1_read, jiffies + msecs_to_jiffies(1250));
 }
 
 

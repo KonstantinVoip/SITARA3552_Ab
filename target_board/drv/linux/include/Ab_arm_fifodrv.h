@@ -67,7 +67,7 @@ typedef struct description_packet
 {
  int size; 
  int cur_rtp_voice_payload_size;
- unsigned char data[4096];
+ unsigned char data[4380];
  
 }DATA_lbc;
 
@@ -76,11 +76,8 @@ typedef struct description_packet
 
 
 struct mpcfifo {
-	DATA_lbc      q[16];
-	unsigned int  head;
-	unsigned int  tail;
+	DATA_lbc      q[1024];
     int           N;
-    int           cur_put_packet_size;
     int           cur_get_packet_size;
     int           fifo_pusto;
     int           fifo_zapolneno;
@@ -88,6 +85,9 @@ struct mpcfifo {
     int           voice_block_size;
     int           all_num_of_voice_blocks;
     int           ostatok_ot_voice_block_size;
+    int           cur_put_packet_size;
+    unsigned int  head;
+    unsigned int  tail;
     //СПИН блокировки
     spinlock_t    *lock;
 };
