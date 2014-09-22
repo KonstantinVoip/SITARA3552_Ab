@@ -114,8 +114,6 @@ struct mpcfifo *mpcfifo_init(unsigned int obj_size,unsigned int obj_num , gfp_t 
 	ret->all_num_of_voice_blocks    =0;    	      //количество пришедших голосовых блоков по 4000
 	ret->ostatok_ot_voice_block_size=0;			  //если не равномерно склеиваються блоки                          
 	
-	
-	
 
 	printk("+mpcfifo_init_alocate_memory_for_structure+\n\r");	
 	return (ret);

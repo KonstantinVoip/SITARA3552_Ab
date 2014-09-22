@@ -470,9 +470,7 @@ int main_sip_call(char* ownnumber, char* ownpass, char* ownip, char* ownsipport,
 {
 
 /*"Usage : <Own Number> <Own pass> <Local IP> <Local SIP Port> <Local RTP Port> <Server IP> <Server SIP Port> <PhoneNumber> <OutputFilename> <InputFilename> <Vyzov>"*/
-
   int  fStop=0;
-
   switch((*scall).V)
 
   {
