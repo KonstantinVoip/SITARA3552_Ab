@@ -73,8 +73,6 @@ typedef struct description_packet
 
 
 
-
-
 struct mpcfifo {
 	DATA_lbc      q[1024];
     int           N;

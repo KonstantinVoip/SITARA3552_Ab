@@ -54,7 +54,7 @@
 
 
 
-
+int array_current_smeschenie_dma=0;
 
 /*****************************************************************************/
 /*	GLOBAL TIMER STRUCTURES     					     				 	 */
@@ -135,7 +135,11 @@ static inline unsigned char* get_data_array()
 	 int  in_size_rtp_dir1=0;
 	 //Пакеты
 	 int period_size=4000;
-	 int array_current_smeschenie=0;
+	 //int array_current_smeschenie_dma=0;
+	 int array_current_smeschenie_cpu=0;
+	 
+	 
+	 
 	 static int start=0;
 	 static int prosto_count=0;
 	 
@@ -149,9 +153,12 @@ static inline unsigned char* get_data_array()
 	 int l_i=200; //Количество элементов Массива
 	 static int count =0;
 	 int i;
-	 static unsigned int mcasp_count=0;
-	 static unsigned int period_count=0;
-
+	 static unsigned int mcasp_count_voice_iter_dma=0;
+	 static unsigned int mcasp_count_voice_iter_cpu=0;
+	 
+	 
+	 static unsigned int period_count_voice_iter_dma=0;
+        
 	 
 	 unsigned int dma_src,dma_area;
 	 dma_area=dmab_slic->area;
@@ -160,33 +167,69 @@ static inline unsigned char* get_data_array()
 	
 	 
 
-	 mcasp_count=mcasp_count+1;
+	 mcasp_count_voice_iter_dma=mcasp_count_voice_iter_dma+1;
+	 mcasp_count_voice_iter_cpu=mcasp_count_voice_iter_cpu+1;
+	 
+	 
 	 //Обработка ситуации первого старта нужно записать в НОЛЬ
 	 if(start==0)
 	 {
 		 printk("_FIRST_Start_\n\r");
-		 mcasp_count=0; 
+		 mcasp_count_voice_iter_dma=0; 
+		 mcasp_count_voice_iter_cpu=0;
+		 period_count_voice_iter_dma=0;
 		 start++;
-		 period_count=0;
+		// memcpy(0xffd50000,&rawData[0],64000); 
 	 }
 	
-	 if(mcasp_count==16)
+	 
+	 if(mcasp_count_voice_iter_dma==16)
 	 {
-	    mcasp_count=0;
-	    period_count=64000+period_count;
-	                               
+		  mcasp_count_voice_iter_dma=0;
+	      period_count_voice_iter_dma=64000+period_count_voice_iter_dma;
+	                            
 	 }  //обнуляем счётчик начинаем заново
       
+	
 	 
 	 
-	 array_current_smeschenie=mcasp_count*period_size;
 	 
-	 //Функция для работы  со  статическим массивом
-	 //memcpy(0xffd50000+array_current_smeschenie,&stereo_voice_buffer[(mcasp_count*period_size)+period_count],period_size);
-	 //printk("mcasp=%d|smeschenie=%d|period=%d\n\r",mcasp_count,array_current_smeschenie,period_count,ktime_now());
+	 if(mcasp_count_voice_iter_cpu==4)
+	 {
+		 mcasp_count_voice_iter_cpu=0;
+		// memcpy(0xffd50000+array_current_smeschenie_dma,&test_8000_stereo[(array_current_smeschenie_cpu)+0],period_size); 
+		                               
+	 }  //обнуляем счётчик начинаем заново
+	 
+	 
+	 
+	 
+	 array_current_smeschenie_dma=mcasp_count_voice_iter_dma*period_size;
+	 array_current_smeschenie_cpu=mcasp_count_voice_iter_cpu*period_size;
+	
+	 
+	// printk("array_smeschenie_dma=%d|array_smeschenie_cpu=%d\n\r",array_current_smeschenie_dma,array_current_smeschenie_cpu);
+	 
+	 
+	 
+	 //printk("mcasp=%d|DMA_array_smeschenie=%d|period=%d\n\r",mcasp_count_voice_iter_dma,array_current_smeschenie,period_count,ktime_now());
 	 
 	
-//#if 0	 
+	  //memcpy(0xffd50000+array_current_smeschenie_dma,&test_8000_stereo[(array_current_smeschenie_cpu)+0],period_size); 
+	 
+	 
+	 // memcpy(0xffd50000+array_current_smeschenie_dma,&test_sinus_32000HZ[(array_current_smeschenie_dma)+0],period_size);
+	 
+	 
+	 //Функция для работы  со  статическим массивом
+	 //memcpy(0xffd50000+array_current_smeschenie,&test_sinus_440HZ[(mcasp_count*period_size)+period_count],period_size);
+	 
+	 
+	
+	 
+	 
+	 
+#if 0	 
 	 if(voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1)==1)
 	 {	
 	 
@@ -223,7 +266,7 @@ static inline unsigned char* get_data_array()
 		 
 	 }
 	 
-//#endif	 
+#endif	 
   	 
     	 
 	 //Распечатаем отладочный массив данных посмотрим что здесь у нас делаеться
@@ -245,7 +288,6 @@ void timer1_routine(unsigned long data)
 
    get_data_array();
    mod_timer(&timer1_read, jiffies + msecs_to_jiffies(125)); // restarting timer  через  100 милисекунд  если я не ошибаюсь
-
   //mod_timer(&timer1_read, jiffies + msecs_to_jiffies(1250));
 }
 
@@ -261,7 +303,7 @@ static void callback1(unsigned lch, u16 ch_status, void *data)
 {
     static int irq_count=0;
 	//printk("+dma_irq=%d|\n\r",irq_count++,ktime_now());
-	
+
 	if (unlikely(ch_status != DMA_COMPLETE))
 	{
 		printk("ulikley_DMA_no_complete\n\r");
@@ -282,7 +324,7 @@ bool Init_Arm_EDMA_interface()
 {
 
   
-    size_t i_size_dma_block_data=0xfa00;     //64000
+    size_t i_size_dma_block_data=0xfa00; //16000    //64000
     //Это моя рабочая часть работает нужно  обновление буфера в  реальном времени подсовывать буфер в реальном времени
     
      
@@ -326,7 +368,9 @@ bool Init_Arm_EDMA_interface()
       timer1_read.function = timer1_routine;
       timer1_read.data = 1;
       timer1_read.expires = jiffies + msecs_to_jiffies(125);//Старт таймера через 125[мс]
-	 
+     
+      
+      memcpy(0xffd50000,&rawData[0],64000);
       add_timer(&timer1_read);  //Starting the timer1 
 	  
 	 
@@ -349,7 +393,6 @@ static void enqueue_dma()
 	static unsigned int period_count=0;
 	static unsigned int prtd_period=0;
 	
-	unsigned char  in_buf_rtp_dir1[8000];
 	
 	unsigned int period_size;
 	unsigned int dma_offset;
@@ -365,117 +408,29 @@ static void enqueue_dma()
 	dma_src=dmab_slic->addr;
 	
 	
+   //printk("prtd_period=%d,mcasp_count=%d\n\r",prtd_period,mcasp_count);
 
-	
-	//printk("prtd_period=%d,mcasp_count=%d\n\r",prtd_period,mcasp_count);
 
-/*	
-	
-	if(prtd_period==0)
-	{
-		
-		if(mcasp_count==0)
-		{
-		//printk("!!!!!!!Podstava!!!!!\n\r");
-		memcpy(0xffd50000,&stereo_voice_buffer[0],64000);
-		}
-	}
-   
-	//mcasp_count=mcasp_count+1;
-	
-	if(prtd_period==0)
-	{	
-	
-		//printk("mcasp_count=%d\n\r",mcasp_count);
-		
-		if(mcasp_count==0)
-		{	 
-			
-		 memcpy(0xffd50000,&stereo_voice_buffer[64000],4000);
-		} 
-		if(mcasp_count==1)
-		{	 
-			
-			memcpy(0xffd50fa0,&stereo_voice_buffer[68000],4000);
-		} 
-		if(mcasp_count==2)
-		{	 
-		
-			memcpy(0xffd51f40,&stereo_voice_buffer[72000],4000);
-		} 
-		if(mcasp_count==3)
-		{	 
-			
-			memcpy(0xffd52e00,&stereo_voice_buffer[76000],4000);
-		} 
-		if(mcasp_count==4)
-		{	 
-			
-			memcpy(0xffd53e80,&stereo_voice_buffer[80000],4000);
-		} 
-		if(mcasp_count==5)
-		{	 
-			
-			memcpy(0xffd54e20,&stereo_voice_buffer[84000],4000);
-		} 
-		if(mcasp_count==6)
-		{	 
-			
-			memcpy(0xffd55dc0,&stereo_voice_buffer[88000],4000);
-		} 
-		if(mcasp_count==7)
-		{	 
-			memcpy(0xffd56d60,&stereo_voice_buffer[92000],4000);
-		} 
-		if(mcasp_count==8)
-		{	 
-			memcpy(0xffd57d00,&stereo_voice_buffer[96000],4000);
-		} 
-		if(mcasp_count==9)
-		{	 
-           memcpy(0xffd58ca0,&stereo_voice_buffer[100000],4000);
-		} 
-		if(mcasp_count==10)
-		{	 
-          memcpy(0xffd59c40,&stereo_voice_buffer[104000],4000);
-		} 
-		if(mcasp_count==11)
-		{	 
-          memcpy(0xffd5abe0,&stereo_voice_buffer[108000],4000);
-		} 
-		if(mcasp_count==12)
-		{	 
-          memcpy(0xffd5bb80,&stereo_voice_buffer[112000],4000);
-		}
-		if(mcasp_count==13)
-		{	 
-          printk("+++++++++++++LAST++++++++++++++++++\n\r");
-		  memcpy(0xffd5cb20,&stereo_voice_buffer[116000],4000);
-          memcpy(0xffd5dac0,&stereo_voice_buffer[120000],4000);
-          memcpy(0xffd5ea60,&stereo_voice_buffer[124000],4000);
-          
-		}
-	
-		if(mcasp_count==14)
-		{
-			memcpy(0xffd5fa00,&stereo_voice_buffer[128000],4000);
-	
-		}
-	
-	
-	
-	}*/
         
  
-    period_size = 0xfa0;                  	        //snd_pcm_lib_period_bytes(substream);
-	dma_offset  = mcasp_count*period_size;          //prtd->period * period_size;
-	dma_pos     = dma_src+dma_offset;               //runtime->dma_addr+ dma_offset;
+      period_size = 0xfa0;                  	        //snd_pcm_lib_period_bytes(substream);
+	
+    
+    
+      dma_offset  = array_current_smeschenie_dma;          //prtd->period * period_size;
+	  dma_pos     = dma_src+dma_offset;               //runtime->dma_addr+ dma_offset;
+	
+	
 	fifo_level  = 0x20;			                    //prtd->params->fifo_level;
      
 	
+	
+	
 	//printk("DMA_POS=0x%x\n\r",dma_offset);
 	
-	mcasp_count=mcasp_count+1;
+	
+	
+	//mcasp_count=mcasp_count+1;
 	//printk("runtime->dma_addr=0x%x,prtd->period=0x%x\n\r",prtd->period,runtime->dma_addr);
 	//printk("+enqueue_dma_=0x%x,dma_pos=0x%x,dma_src=0x%x,dma_offset=0x%x\n\r",mcasp_count,dma_pos,dma_src,dma_offset);
 	
@@ -496,7 +451,7 @@ static void enqueue_dma()
      //Нужно сделть  механизм в реальном времени нам пригрывет файлы наверно это вообще не должно быть здесь
      //быстро подсовывать данные сюда пока они не закончились
      
-    
+     //  memcpy(0xffd50000,&rawData[0],64000); 
      //memcpy(0xffd50000,get_data_array(),64000);
       
 	 src = dma_pos;
@@ -506,8 +461,7 @@ static void enqueue_dma()
 	 src_cidx = data_type * fifo_level;
 	 dst_cidx = 0;
 
-	 //printk("SRC=0x%x|src_cidx=0x%x|count=0x%x,dma_offset=0x%x|dma_pos=0x%x\n\r",src,src_cidx,count,dma_offset,dma_pos); 
-	 
+
 	 acnt = 0x2;
 	 edma_set_src(dma_slot , src, INCR, W8BIT);
 	 edma_set_dest(dma_slot , dst, INCR, W8BIT);
@@ -530,26 +484,13 @@ static void enqueue_dma()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
-	 if(prtd_period==1)
-	 {
-	 // printk("STOP_ALL_RTANSLATIONS_FOR_DMA!!!!\n\r");	 
-	 
 	 /*
-	 davinci_mcasp_trigger(l_rsubstream,SNDRV_PCM_TRIGGER_STOP,l_cpu_dai);  
-	 snd_soc_dapm_stream_event(l_pcm->private_data,playback_stream_name,SND_SOC_DAPM_STREAM_STOP);
-	 snd_dma_free_pages(dmab_slic);
-     edma_free_channel(dma_channel);
-     edma_free_slot(dma_slot);
-	 */
-	 
-	 }
-	 
 	if(mcasp_count==15)
 	{
 	//printk("!!!!!RESET_PERIOD_BUFFER=%d!!!!\n\r",prtd_period);
 	mcasp_count=0;
 	prtd_period++;
-    }
+    }*/
 	 
 }
 

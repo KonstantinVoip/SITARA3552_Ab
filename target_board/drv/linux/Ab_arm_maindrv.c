@@ -61,7 +61,7 @@ GENERAL NOTES
 #include "include/Ab_arm_slicdrv.h"
 #include "include/Ab_arm_dmadrv.h"
 #include "include/Ab_arm_fifodrv.h"
-
+#include "include/Ab_arm_codec.h"
 
 #define ENABLE_APLAY_WAV_FILE  1
 
@@ -252,7 +252,7 @@ bool ret=0;
 
 			
 
-//#if 0
+#if 0
 /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/
 			ret=Init_Net_Filter_HooK_IP();
 			ret=Init_Net_Filter_Hook_ARP();  	
@@ -260,7 +260,7 @@ bool ret=0;
 			if(ret==0){printk("?Error Init Ethernet Module?\n\r");}
 			Init_FIFO_voice_rtp_buf ();
 	
-//#endif  
+#endif  
 
 
 
@@ -268,8 +268,14 @@ bool ret=0;
         /*Init Low Level Hardware  Appart functon*/
           Init_Arm_AIC3106_low_level_codec_i2c();
           Init_Arm_McASP_interface();
-        /*Init and Start EDMA  Sitara Interface*/
-          Init_Arm_EDMA_interface();   
+        
+          /*Initialize AUdio Codecs for ARM processor */
+          Init_audio_codecs ();
+          
+          
+          /*Init and Start EDMA  Sitara Interface*/
+        
+          //Init_Arm_EDMA_interface();   
 
    
         /*Start Testing FUnctions */       
@@ -300,15 +306,15 @@ void Ab_arm_cleanup_module(void)
 //  printk("Ab_arm_exit_module() I-TDM called\n");
 
     //Ethernet Clear block	
-//#if 0	
+#if 0	
 	nf_unregister_hook(&bundle);      
     nf_unregister_hook(&arp_bundle); 
-//#endif
+#endif
   
-//#if 0
+#if 0
     Clear_Arm_EDMA_interface();
     Clear_FIFO_voice_rtp_buf();
-//#endif 
+#endif 
     printk("!OK_CLEAR ALL DATA !\n\r") ;
     
 }

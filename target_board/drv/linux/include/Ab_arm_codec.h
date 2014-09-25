@@ -38,6 +38,25 @@
 #include <linux/module.h>
 
 
+/*****************************************************************************/
+/*	                 EXTERN FUNCTIONS AND DATA TYPES						 */
+/******************************************************************************/
+int  Init_audio_codecs (); //Init and Clear FIFO buffer
+int  Clear_audio_codec(); //Clear FIFO buffer
+
+/*CODER  and  Encode FUnctionS  TO DO Features NEXT */
+/*
+g711_alaw_encoder(const unsigned char *input_buf,short *output_buffer,size);
+g711_alaw_decoder(const unsigned char *input_buf,short *output_buffer,size);
+g711_ulaw_encoder(const unsigned char *input_buf,short *output_buffer,size);
+g711_ulaw_decoder(const unsigned char *input_buf,short *output_buffer,size);
+*/
+
+
+
+
+
+
 
 
 /*****************************************************************************/
@@ -58,7 +77,7 @@ static int seg_uend[8] = {0x3F, 0x7F, 0xFF, 0x1FF,0x3FF, 0x7FF, 0xFFF, 0x1FFF};
 
 /* u- to A-law conversions */
 /* copy from CCITT G.711 specifications */
-unsigned char u2a[128] = {			       
+static unsigned char u2a[128] = {			       
 	1,	1,	2,	2,	3,	3,	4,	4,
 	5,	5,	6,	6,	7,	7,	8,	8,
 	9,	10,	11,	12,	13,	14,	15,	16,
@@ -80,7 +99,7 @@ unsigned char u2a[128] = {
 	121,	122,	123,	124,	125,	126,	127,	128};
 
 /* A- to u-law conversions */
-unsigned char a2u[128] = {			  
+static unsigned char a2u[128] = {			  
 	1,	3,	5,	7,	9,	11,	13,	15,
 	16,	17,	18,	19,	20,	21,	22,	23,
 	24,	25,	26,	27,	28,	29,	30,	31,
