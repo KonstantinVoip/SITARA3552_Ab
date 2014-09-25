@@ -48,12 +48,14 @@ int  Init_audio_codecs ()
     printk("START_AUDIO_CODEC_TEST\n\r");
 	int i=0;
 	//int l_i=200;
-    
+ 
+/*	
 	for(i=0;i<8012;i++)
 	{	
 	  out_aPCM[i]=ulaw2linear(test_sinus_g711_uLAW[i]);
 	}
   
+*/  
 	//Вроде Похоже на правду Декодер G.711 работает у нас    
 	
 	
@@ -65,11 +67,52 @@ int  Init_audio_codecs ()
 
     }
 	*/
+		
+}
+short g711_ulaw_decoder(short in_size,short *output_pcm_buf,const unsigned char *input_ulaw_buffer)
+//short g711_ulaw_decoder(const unsigned char *input_ulaw_buffer,short *output_pcm_buf  ,short in_size)
+{
+    short l_in_size_byte=0;
+    short i=0;
+    
+    //Нечего Декодировать нам
+
+    
+    
+    if(in_size==0)
+    {
+     printk("NO DATA to  G711_ULAW_DECODE_to_PCM\n\r"); 
+     return 0;
+    }
+    
+    l_in_size_byte=in_size;
+    printk("+g711_ulaw_decoder/in_size=%d+\n\r",l_in_size_byte);
+    
+    /*   
+	for(i=0;i<l_in_size_byte;i++)
+	{	
+		output_pcm_buf[i]=ulaw2linear(input_ulaw_buffer[i]);
+	}
+*/	
 	
 	
-	
+return l_in_size_byte;
 	
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /*****************************************************************************

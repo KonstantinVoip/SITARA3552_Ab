@@ -45,18 +45,14 @@ int  Init_audio_codecs (); //Init and Clear FIFO buffer
 int  Clear_audio_codec(); //Clear FIFO buffer
 
 /*CODER  and  Encode FUnctionS  TO DO Features NEXT */
-/*
-g711_alaw_encoder(const unsigned char *input_buf,short *output_buffer,size);
-g711_alaw_decoder(const unsigned char *input_buf,short *output_buffer,size);
-g711_ulaw_encoder(const unsigned char *input_buf,short *output_buffer,size);
-g711_ulaw_decoder(const unsigned char *input_buf,short *output_buffer,size);
-*/
+//short g711_alaw_encoder(const unsigned char *input_buf,short *output_buffer,size);
+//short g711_alaw_decoder(const unsigned char *input_buf,short *output_buffer,short size);
 
 
+short g711_ulaw_encoder(const unsigned char *input_pcm_buf    ,short *output_ulaw_buffer,short in_size);
+//short g711_ulaw_decoder(const unsigned char *input_ulaw_buffer,short *output_pcm_buf    ,short in_size);
 
-
-
-
+short g711_ulaw_decoder(short in_size,short *output_ulaw_buffer,const unsigned char *input_ulaw_buffer);
 
 
 /*****************************************************************************/
@@ -67,6 +63,7 @@ g711_ulaw_decoder(const unsigned char *input_buf,short *output_buffer,size);
 #define	NSEGS		(8)		    /* Number of A-law segments. */
 #define	SEG_SHIFT	(4)		    /* Left shift for segment number. */
 #define	SEG_MASK	(0x70)		/* Segment field mask. */
+
 
 
 /*****************************************************************************/

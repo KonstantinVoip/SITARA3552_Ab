@@ -42,6 +42,7 @@
 #include "include/Ab_arm_dmadrv.h"
 #include "include/Ab_arm_TestBuf.h"
 #include "include/Ab_arm_fifodrv.h"
+#include "include/Ab_arm_codec.h"
 #include "edma.h"
 
 
@@ -132,12 +133,15 @@ Remarks:			Start Testing EDMA Callback1 function
 static inline unsigned char* get_data_array()
 {
 	 unsigned char  in_buf_rtp_dir1[4380];//размер блока приблизительный
+	 short output_pcm_buf[2190];
+	 unsigned char buffer_test[4380];
+	 
 	 int  in_size_rtp_dir1=0;
 	 //Пакеты
 	 int period_size=4000;
 	 //int array_current_smeschenie_dma=0;
 	 int array_current_smeschenie_cpu=0;
-	 
+	 short out_size_of_massive=0;
 	 
 	 
 	 static int start=0;
@@ -201,39 +205,45 @@ static inline unsigned char* get_data_array()
 		                               
 	 }  //обнуляем счётчик начинаем заново
 	 
-	 
-	 
-	 
+	
 	 array_current_smeschenie_dma=mcasp_count_voice_iter_dma*period_size;
 	 array_current_smeschenie_cpu=mcasp_count_voice_iter_cpu*period_size;
-	
 	 
-	// printk("array_smeschenie_dma=%d|array_smeschenie_cpu=%d\n\r",array_current_smeschenie_dma,array_current_smeschenie_cpu);
-	 
-	 
-	 
+	 //printk("array_smeschenie_dma=%d|array_smeschenie_cpu=%d\n\r",array_current_smeschenie_dma,array_current_smeschenie_cpu);
 	 //printk("mcasp=%d|DMA_array_smeschenie=%d|period=%d\n\r",mcasp_count_voice_iter_dma,array_current_smeschenie,period_count,ktime_now());
-	 
-	
-	  //memcpy(0xffd50000+array_current_smeschenie_dma,&test_8000_stereo[(array_current_smeschenie_cpu)+0],period_size); 
-	 
-	 
-	 // memcpy(0xffd50000+array_current_smeschenie_dma,&test_sinus_32000HZ[(array_current_smeschenie_dma)+0],period_size);
-	 
-	 
+	 //memcpy(0xffd50000+array_current_smeschenie_dma,&test_8000_stereo[(array_current_smeschenie_cpu)+0],period_size); 
+	 //memcpy(0xffd50000+array_current_smeschenie_dma,&test_sinus_32000HZ[(array_current_smeschenie_dma)+0],period_size);
 	 //Функция для работы  со  статическим массивом
 	 //memcpy(0xffd50000+array_current_smeschenie,&test_sinus_440HZ[(mcasp_count*period_size)+period_count],period_size);
 	 
-	 
-	
-	 
-	 
-	 
-#if 0	 
+	  
+//#if 0	 
 	 if(voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1)==1)
 	 {	
 	 
-	     /*
+	     
+		 printk("+voice_buf_get_data_in_rtp_stream1=%d+\n\r",in_size_rtp_dir1,ktime_now());
+		  
+		 
+		 out_size_of_massive=g711_ulaw_decoder(in_size_rtp_dir1,&output_pcm_buf,in_buf_rtp_dir1);
+		 
+		
+		 
+		 /*
+		 for(i=0;i<=l_i;i++)
+		 {
+			// printk("{%d|0x%x}-",i,stereo_voice_buffer[i]); 
+			printk("{%d|0x%x}-",i,output_pcm_buf[i]);
+
+		 }
+		 */
+		 
+		 
+		 
+		 
+		 
+		 
+		 /*
 		 prosto_count=prosto_count+1;
 		 
 		 /
@@ -243,9 +253,13 @@ static inline unsigned char* get_data_array()
 		 }
 		  */
 		 
-		      
+		    
+		 
+		 
+		 
+		 
 		  //printk("in_size_rtp_dir1=%d|packet_count=%d\n\r",in_size_rtp_dir1,num_of_pcaket++);
-		   memcpy(0xffd50000+array_current_smeschenie,in_buf_rtp_dir1,period_size);
+		  //memcpy(0xffd50000+array_current_smeschenie,in_buf_rtp_dir1,period_size);
 	   
 	     //memcpy(0xffd50000+array_current_smeschenie,&stereo_voice_buffer[(mcasp_count*period_size)+period_count],period_size);  
 	     	
@@ -262,11 +276,11 @@ static inline unsigned char* get_data_array()
 	 else
 	{
 		 
-		   //printk("NO_DATA_IN_FIFO_BUFFER\n\r");
+		   printk("+get_data_array()/NO_DATA_IN_FIFO_BUFFER+\n\r");
 		 
-	 }
+	}
 	 
-#endif	 
+//#endif	 
   	 
     	 
 	 //Распечатаем отладочный массив данных посмотрим что здесь у нас делаеться
@@ -285,10 +299,10 @@ void timer1_routine(unsigned long data)
 {   
 
    //printk("+MOD_TIMER+\n\r");	
-
+   
    get_data_array();
-   mod_timer(&timer1_read, jiffies + msecs_to_jiffies(125)); // restarting timer  через  100 милисекунд  если я не ошибаюсь
-  //mod_timer(&timer1_read, jiffies + msecs_to_jiffies(1250));
+   //mod_timer(&timer1_read, jiffies + msecs_to_jiffies(125)); // restarting timer  через  100 милисекунд  если я не ошибаюсь
+   mod_timer(&timer1_read, jiffies + msecs_to_jiffies(1250));
 }
 
 
@@ -367,10 +381,9 @@ bool Init_Arm_EDMA_interface()
       init_timer(&timer1_read);
       timer1_read.function = timer1_routine;
       timer1_read.data = 1;
-      timer1_read.expires = jiffies + msecs_to_jiffies(125);//Старт таймера через 125[мс]
-     
-      
-      memcpy(0xffd50000,&rawData[0],64000);
+      timer1_read.expires = jiffies + msecs_to_jiffies(1250);//Старт таймера через 125[мс]
+    
+      memcpy(0xffd50000,&null_buf[0],64000); 
       add_timer(&timer1_read);  //Starting the timer1 
 	  
 	 
@@ -410,18 +423,12 @@ static void enqueue_dma()
 	
    //printk("prtd_period=%d,mcasp_count=%d\n\r",prtd_period,mcasp_count);
 
-
-        
- 
-      period_size = 0xfa0;                  	        //snd_pcm_lib_period_bytes(substream);
+     period_size = 0xfa0;                  	        //snd_pcm_lib_period_bytes(substream);
 	
-    
-    
-      dma_offset  = array_current_smeschenie_dma;          //prtd->period * period_size;
-	  dma_pos     = dma_src+dma_offset;               //runtime->dma_addr+ dma_offset;
+     dma_offset  = array_current_smeschenie_dma;          //prtd->period * period_size;
+	 dma_pos     = dma_src+dma_offset;                    //runtime->dma_addr+ dma_offset;
 	
-	
-	fifo_level  = 0x20;			                    //prtd->params->fifo_level;
+	 fifo_level  = 0x20;			                      //prtd->params->fifo_level;
      
 	
 	

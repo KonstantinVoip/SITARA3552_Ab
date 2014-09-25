@@ -63,7 +63,11 @@ GENERAL NOTES
 #include "include/Ab_arm_fifodrv.h"
 #include "include/Ab_arm_codec.h"
 
-#define ENABLE_APLAY_WAV_FILE  1
+//#define ENABLE_APLAY_WAV_FILE  1
+
+//#define LINUX_APLAY_TEST       1
+#define KERNEL_MUDULE_TEST     1
+
 
 
 /*****************************************************************************/
@@ -251,35 +255,40 @@ bool ret=0;
      
 
 			
+#ifdef KERNEL_MUDULE_TEST
 
-#if 0
-/*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/
+            /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/
 			ret=Init_Net_Filter_HooK_IP();
 			ret=Init_Net_Filter_Hook_ARP();  	
 			ret=Init_Arm_CPSW_MAC_Ethernet();    //Init ARM CPSW  Ethernet  Interface Driver
 			if(ret==0){printk("?Error Init Ethernet Module?\n\r");}
+			/*Initialize FIFO RTP BUFFER */
 			Init_FIFO_voice_rtp_buf ();
-	
-#endif  
-
-
-
-
-        /*Init Low Level Hardware  Appart functon*/
-          Init_Arm_AIC3106_low_level_codec_i2c();
-          Init_Arm_McASP_interface();
-        
-          /*Initialize AUdio Codecs for ARM processor */
-          Init_audio_codecs ();
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+            /*Init Low Level Hardware  Appart functon*/
+            Init_Arm_AIC3106_low_level_codec_i2c();
+            Init_Arm_McASP_interface();      
+            /*Initialize AUdio Codecs for ARM processor */
+            Init_audio_codecs ();
+            /*Init and Start EDMA  Sitara Interface*/
+            Init_Arm_EDMA_interface();   
+#endif
           
           
-          /*Init and Start EDMA  Sitara Interface*/
-        
-          //Init_Arm_EDMA_interface();   
-
+          
+ 
+#ifdef     LINUX_APLAY_TEST       
+           /*Init Low Level Hardware  Appart functon*/
+           Init_Arm_AIC3106_low_level_codec_i2c();
+           Init_Arm_McASP_interface();      
+           /*Initialize AUdio Codecs for ARM processor */
+           Init_audio_codecs (); 
+ 
+#endif                 
+          
    
-        /*Start Testing FUnctions */       
-         //ret= Start_Test_Sitara_arm_func();
+/*Start Testing FUnctions */       
+//ret= Start_Test_Sitara_arm_func();
           
           
 return 0;
@@ -306,16 +315,26 @@ void Ab_arm_cleanup_module(void)
 //  printk("Ab_arm_exit_module() I-TDM called\n");
 
     //Ethernet Clear block	
-#if 0	
-	nf_unregister_hook(&bundle);      
-    nf_unregister_hook(&arp_bundle); 
-#endif
-  
-#if 0
-    Clear_Arm_EDMA_interface();
-    Clear_FIFO_voice_rtp_buf();
-#endif 
-    printk("!OK_CLEAR ALL DATA !\n\r") ;
+	
+#ifdef KERNEL_MUDULE_TEST
+	   nf_unregister_hook(&bundle);      
+       nf_unregister_hook(&arp_bundle); 
+	
+       Clear_Arm_EDMA_interface();
+       Clear_FIFO_voice_rtp_buf();
+#endif	
+	
+
+       
+#ifdef   LINUX_APLAY_TEST 
+       
+       
+#endif       
+       
+       
+       
+       
+printk("!OK_CLEAR ALL DATA !\n\r") ;
     
 }
 
