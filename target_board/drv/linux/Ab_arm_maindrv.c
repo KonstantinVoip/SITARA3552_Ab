@@ -65,8 +65,8 @@ GENERAL NOTES
 
 //#define ENABLE_APLAY_WAV_FILE  1
 
-//#define LINUX_APLAY_TEST       1
-#define KERNEL_MUDULE_TEST     1
+  #define LINUX_APLAY_TEST       1
+//#define KERNEL_MUDULE_TEST     1
 
 
 
@@ -252,9 +252,7 @@ Return Value:	    1  =>  Success  ,-1 => Failure
 int Ab_arm_init_module(void)
 {
 bool ret=0;
-     
-
-			
+     	
 #ifdef KERNEL_MUDULE_TEST
 
             /*Initialization NEt_FILTER Kernel PAcket Recieve and Transmit*/
@@ -275,15 +273,13 @@ bool ret=0;
 #endif
           
           
-          
- 
 #ifdef     LINUX_APLAY_TEST       
            /*Init Low Level Hardware  Appart functon*/
-           Init_Arm_AIC3106_low_level_codec_i2c();
-           Init_Arm_McASP_interface();      
+          // Init_Arm_AIC3106_low_level_codec_i2c();
+           //Init_Arm_McASP_interface();      
            /*Initialize AUdio Codecs for ARM processor */
-           Init_audio_codecs (); 
- 
+           //Init_audio_codecs (); 
+           Start_Test_Sitara_arm_func();
 #endif                 
           
    

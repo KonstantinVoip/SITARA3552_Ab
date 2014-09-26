@@ -50,8 +50,19 @@
 #define SAMPLE_RATE			0.125	//8000 Hz
 #define PCM_SAMPLE_SIZE		16
 
+
+#define PERIOD_SIZE         4000   //4000 byte
+
+
 #define A_LAW_SAMPLE_SIZE	8
 #define U_LAW_SAMPLE_SIZE	8
+
+
+
+
+/////////////////////////////DMA PARAMETERS размер блока DMA/////////////////////////////////////////////////////////////
+#define  PERIOD_SIZE            4000   //4000 byte
+#define  i_size_dma_block_data  64000  //64000  byte
 
 
 
@@ -133,12 +144,12 @@ Remarks:			Start Testing EDMA Callback1 function
 static inline unsigned char* get_data_array()
 {
 	 unsigned char  in_buf_rtp_dir1[4380];//размер блока приблизительный
-	 short output_pcm_buf[2190];
-	 unsigned char buffer_test[4380];
+	 short output_pcm_buf[1024];
+	// unsigned char buffer_test[1460];
 	 
 	 int  in_size_rtp_dir1=0;
 	 //Пакеты
-	 int period_size=4000;
+	 //int period_size=4000;
 	 //int array_current_smeschenie_dma=0;
 	 int array_current_smeschenie_cpu=0;
 	 short out_size_of_massive=0;
@@ -154,7 +165,7 @@ static inline unsigned char* get_data_array()
 	 
 	 
 	 
-	 int l_i=200; //Количество элементов Массива
+	 int l_i=64; //Количество элементов Массива
 	 static int count =0;
 	 int i;
 	 static unsigned int mcasp_count_voice_iter_dma=0;
@@ -206,8 +217,8 @@ static inline unsigned char* get_data_array()
 	 }  //обнуляем счётчик начинаем заново
 	 
 	
-	 array_current_smeschenie_dma=mcasp_count_voice_iter_dma*period_size;
-	 array_current_smeschenie_cpu=mcasp_count_voice_iter_cpu*period_size;
+	 array_current_smeschenie_dma=mcasp_count_voice_iter_dma*PERIOD_SIZE;
+	 array_current_smeschenie_cpu=mcasp_count_voice_iter_cpu*PERIOD_SIZE;
 	 
 	 //printk("array_smeschenie_dma=%d|array_smeschenie_cpu=%d\n\r",array_current_smeschenie_dma,array_current_smeschenie_cpu);
 	 //printk("mcasp=%d|DMA_array_smeschenie=%d|period=%d\n\r",mcasp_count_voice_iter_dma,array_current_smeschenie,period_count,ktime_now());
@@ -216,8 +227,13 @@ static inline unsigned char* get_data_array()
 	 //Функция для работы  со  статическим массивом
 	 //memcpy(0xffd50000+array_current_smeschenie,&test_sinus_440HZ[(mcasp_count*period_size)+period_count],period_size);
 	 
+	 
+	 
+	 //out_size_of_massive=g711_ulaw_decoder(1024/*in_size_rtp_dir1*/,&output_pcm_buf,in_buf_rtp_dir1);
+	 
+	 
 	  
-//#if 0	 
+#if 0	 
 	 if(voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1)==1)
 	 {	
 	 
@@ -225,7 +241,8 @@ static inline unsigned char* get_data_array()
 		 printk("+voice_buf_get_data_in_rtp_stream1=%d+\n\r",in_size_rtp_dir1,ktime_now());
 		  
 		 
-		 out_size_of_massive=g711_ulaw_decoder(in_size_rtp_dir1,&output_pcm_buf,in_buf_rtp_dir1);
+		
+		 out_size_of_massive=g711_ulaw_decoder(1024/*in_size_rtp_dir1*/,&output_pcm_buf,in_buf_rtp_dir1);
 		 
 		
 		 
@@ -235,8 +252,8 @@ static inline unsigned char* get_data_array()
 			// printk("{%d|0x%x}-",i,stereo_voice_buffer[i]); 
 			printk("{%d|0x%x}-",i,output_pcm_buf[i]);
 
-		 }
-		 */
+		 }*/
+		 
 		 
 		 
 		 
@@ -271,16 +288,16 @@ static inline unsigned char* get_data_array()
 			     count++;
 		 }*/
 	   
-		 
+		 return 1; //Возврвщаем локальный буфер для проверки 
 	 }
 	 else
 	{
 		 
 		   printk("+get_data_array()/NO_DATA_IN_FIFO_BUFFER+\n\r");
-		 
+		   return 0; //Возврвщаем локальный буфер для проверки
 	}
 	 
-//#endif	 
+#endif	 
   	 
     	 
 	 //Распечатаем отладочный массив данных посмотрим что здесь у нас делаеться
@@ -338,7 +355,7 @@ bool Init_Arm_EDMA_interface()
 {
 
   
-    size_t i_size_dma_block_data=0xfa00; //16000    //64000
+    //size_t i_size_dma_block_data=0xfa00; //16000    //64000
     //Это моя рабочая часть работает нужно  обновление буфера в  реальном времени подсовывать буфер в реальном времени
     
      
@@ -365,7 +382,7 @@ bool Init_Arm_EDMA_interface()
 	 }
 
 	 printk("preallocate_dma_buffer:cpu_viewed_area=0x%x,device_viewed_addr=0x%x,size=%d\n", (void *) dmab_slic->area, (void *)dmab_slic->addr, i_size_dma_block_data);
-     ////////////////////PREPARE   FUNCTIONS////////////////////////////	
+	 ////////////////////PREPARE   FUNCTIONS////////////////////////////	
 	 dma_prepare();
 	 
 	 
@@ -383,7 +400,8 @@ bool Init_Arm_EDMA_interface()
       timer1_read.data = 1;
       timer1_read.expires = jiffies + msecs_to_jiffies(1250);//Старт таймера через 125[мс]
     
-      memcpy(0xffd50000,&null_buf[0],64000); 
+      
+      //memcpy(0xffd50000,&null_buf[0],64000); 
       add_timer(&timer1_read);  //Starting the timer1 
 	  
 	 
@@ -407,7 +425,7 @@ static void enqueue_dma()
 	static unsigned int prtd_period=0;
 	
 	
-	unsigned int period_size;
+	//unsigned int period_size;
 	unsigned int dma_offset;
 	unsigned int data_type;
 	unsigned short acnt;
@@ -417,17 +435,27 @@ static void enqueue_dma()
 	unsigned int count; 
 	unsigned int dma_src,dma_area;
 	
+	
+	
 	dma_area=dmab_slic->area;
 	dma_src=dmab_slic->addr;
 	
 	
    //printk("prtd_period=%d,mcasp_count=%d\n\r",prtd_period,mcasp_count);
 
-     period_size = 0xfa0;                  	        //snd_pcm_lib_period_bytes(substream);
+   //  period_size = 0xfa0;                  	        //snd_pcm_lib_period_bytes(substream);
+	
+	
+	
+	
+	
 	
      dma_offset  = array_current_smeschenie_dma;          //prtd->period * period_size;
 	 dma_pos     = dma_src+dma_offset;                    //runtime->dma_addr+ dma_offset;
-	
+	 
+	 
+	 
+	 
 	 fifo_level  = 0x20;			                      //prtd->params->fifo_level;
      
 	
@@ -443,7 +471,7 @@ static void enqueue_dma()
 	
 	
 	data_type = 0x2;//prtd->params->data_type;
-    count = period_size / data_type;
+    count = PERIOD_SIZE / data_type;
 
 
 	//printk("DaTA_TYPE=0x%x\n\r");
@@ -487,18 +515,7 @@ static void enqueue_dma()
 		    edma_set_transfer_params(dma_slot , acnt, fifo_level,count, fifo_level,ABSYNC);
 	 }
 	 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-	 /*
-	if(mcasp_count==15)
-	{
-	//printk("!!!!!RESET_PERIOD_BUFFER=%d!!!!\n\r",prtd_period);
-	mcasp_count=0;
-	prtd_period++;
-    }*/
-	 
+
 }
 
 

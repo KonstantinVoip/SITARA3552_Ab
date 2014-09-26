@@ -20,7 +20,7 @@
 //#define FIFO_PACKET_NUM        16
 
 #define FIFO_PACKET_SIZE_BYTE  4380          
-#define FIFO_PACKET_NUM        1024
+#define FIFO_PACKET_NUM        4
 
 
 /*****************************************************************************/
@@ -146,6 +146,8 @@ static bool mpcfifo_get_buf_ready(struct mpcfifo *rbd_p)
 	
 	//printk("++++rbd_p->tail=%d|rbd_p->head=%d++++\n\r",rbd_p->tail,rbd_p->head);
 	
+	
+	/*Очередь не заполнена*/
 	if (rbd_p->tail -rbd_p->head ==0)
 	{
 		 //mdelay(500);
@@ -199,6 +201,8 @@ static unsigned int mpcfifo_put(struct mpcfifo *rbd_p,const unsigned char *buf)
 	static int schetchik_vhogdenia=0;
 	static int local_count_i=0;
 	static int prosto_esche_odin_packet_count=0;
+	static int block_count=0;
+	
 	
 	//Нет указателя на FIFO выходим из очереди
 	if(!rbd_p){return 0;}
@@ -237,7 +241,7 @@ static unsigned int mpcfifo_put(struct mpcfifo *rbd_p,const unsigned char *buf)
 	
 	
 
-	
+	//кладём три пакета
 	if(packet_count==3)
 	{
 		
@@ -246,8 +250,8 @@ static unsigned int mpcfifo_put(struct mpcfifo *rbd_p,const unsigned char *buf)
 		  ps.size=counts_nakopitel_bytes_to_voice_block;//counts_nakopitel_bytes_to_voice_block;
 		  //увелтчтваем очередь на еденицу
 		  
-		  
-		  if(rbd_p->tail==1024)
+		  /*Очередь достгла своего  пика обнуляем её*/
+		  if(rbd_p->tail==4)
 		  {
 			 // printk("TAIL=0\n\r");
 			  rbd_p->tail=0;  
@@ -255,6 +259,13 @@ static unsigned int mpcfifo_put(struct mpcfifo *rbd_p,const unsigned char *buf)
 		  
 		  
 		  rbd_p->q[rbd_p->tail++]=ps;
+		  block_count=block_count+1;
+		  
+		  
+		  
+		  //printk("FIFO_BLOCK_PUT=%d,BLOCK__DATA_SIZE=%d|num_of_packet_in_BLOCK=%d,all_packet_in=%d\n\r",block_count,counts_nakopitel_bytes_to_voice_block,packet_count,prosto_esche_odin_packet_count);
+		  
+		  
 		  
 		  //mpcfifo_get_buf_ready(rbd_p);
 		  
@@ -273,6 +284,9 @@ static unsigned int mpcfifo_put(struct mpcfifo *rbd_p,const unsigned char *buf)
 	      schetchik_vhogdenia=0;    
 	  return 1;
 	}
+	
+	//Обоаботка остатка пакетов
+	
 	
 	
 	
@@ -317,7 +331,7 @@ static void mpcfifo_get(struct mpcfifo *rbd_p, void *obj)
 	//printk("GET:head++=%d,\n\r",rbd_p->head);
 	
 	//тут видимо ничего не меняем
-	 if(rbd_p->head==1024)
+	 if(rbd_p->head==4)
 	 {
 	 //  printk("TAIL=0\n\r");
 	   rbd_p->head=0;  

@@ -9,6 +9,11 @@
 * Author      : Konstantin Shiluaev..
 *
 ******************************************************************************/
+
+
+#include <linux/spinlock.h>
+#include <linux/err.h>
+#include <linux/log2.h>
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/errno.h>
@@ -52,7 +57,7 @@
 
 
 
-
+#define GFP_MASK               GFP_KERNEL
 /*****************************************************************************/
 /*Local INCLUDES							     */
 /*****************************************************************************/
@@ -204,6 +209,8 @@ static void test_array_function();
 static int test_edma_function();
 static int test_edma_function_end();
 
+//TEST 5
+static void test_copy_array();
 
 
 /*****************************************************************************/
@@ -272,9 +279,11 @@ int Start_Test_Sitara_arm_func()
 	//TEST 2
 	//test_array_function();	
 	//TEST 3 EDMA Example 
-	test_edma_function();
-	test_edma_function_end();
+	//test_edma_function();
+	//test_edma_function_end();
 	//TEST 4
+	  test_copy_array();
+  
 	//TEST 5 
 	return result;	
 
@@ -1207,7 +1216,6 @@ static void test_sizeof_function()
   printk(KERN_INFO "float =  %d\n\r",sizeof k);
   printk(KERN_INFO "short int =  %d\n\r",sizeof m);
   printk(KERN_INFO "int =  %d\n\r",sizeof l);
-  
   printk(KERN_INFO "lott_f =  %d\n\r",sizeof t);
   printk(KERN_INFO "size_t =  %d\n\r",sizeof len);
   printk(KERN_INFO "unsigned char =  %d\n\r",sizeof a);
@@ -1216,13 +1224,187 @@ static void test_sizeof_function()
   printk(KERN_INFO "signed char  =  %d\n\r",sizeof d);
   printk(KERN_INFO "signed short= %d\n\r",sizeof e);
   printk(KERN_INFO "signed long =  %d\n\r",sizeof f);
-			
+				
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void  func2()
+{
+  
+  int i;
+  unsigned short  *array;   //2 байт	
+  
+  array=kmalloc(6000,GFP_MASK);
+  if(!array)
+  {
+	  printk("ERROR\n\r");
+      return 0;
+  }
+  
+  
+  //void *mas;	
+  
+  
+ // mas=kmalloc(sizeof(8192), GFP_MASK);
+ 
+  
+  /*
+  array=(unsigned short)mas;
+  if(!mas)
+  {
+	  printk("ERROR\n\r");
+  }
+  */
+  //printk(KERN_INFO "structure_byte= %d\n\r",sizeof array);
+  
+  
+  for(i=0;i<5000;i++)
+  {
+	  array[i]=0x2211;
+  }
+ 
+  printk("OK_SUPER_DUPER=0x%x\n\r",array[4500]);
+  kfree(array);
+  
 	
 }
 
 
 
 
+
+
+
+
+
+
+
+
+
+typedef struct description_data_array
+{
+ unsigned short size; //беззнаковы размер 0-65535
+ unsigned char  array_voice_block[4096]; //беззнаковый тип данных
+}DATA_VOICE_ARRAY;
+
+
+typedef struct voice_fifo {
+ 	unsigned short a;
+ 	DATA_VOICE_ARRAY      voice_block[2];//4 элемента voice  FIFO
+	unsigned short b;
+
+};
+
+
+static void func1()
+{
+	unsigned short i=0;
+    struct voice_fifo *stream1=NULL;
+	
+	
+    //Инициализация нашеё структуры.
+    
+	//Наконец-то правильное значение размера всеё структуры а не указателя	
+	printk(KERN_INFO "structure_byte= %d\n\r",sizeof(struct voice_fifo));
+	
+	stream1 = kmalloc(sizeof(struct voice_fifo), GFP_MASK);
+	if (!stream1)
+	{	
+		printk("+NO MEMRY\n\r+");
+		return(NULL);
+	}
+	stream1->a=0x0000;  //Видимо и нициализировать лучше всеми 0xffff итд.итп
+	stream1->b=0x0000;
+	printk(KERN_INFO "structure_voiceblock_byte= %d\n\r",sizeof(stream1->voice_block));
+	memset(&stream1->voice_block,0x00,sizeof(stream1->voice_block));
+    
+	 
+	/*
+	printk(KERN_INFO"a=0x%x,b=0x%x\n\r",stream1->a,stream1->b);
+	for(i=0;i<20;i++)
+	{
+	// printk("{%d|0x%x}-",i,stereo_voice_buffer[i]); 
+	  printk(KERN_INFO"{%d|0x%x}-",i,stream1->voice_block[1].array_voice_block[i]);
+	}
+	*/
+	unsigned short num_voice_block_0=0;
+	unsigned short num_voice_block_1=1;
+	//заполняем нашу структуру.1 голосовой буфер
+	
+	printk(KERN_INFO"=%d\n\r",sizeof(stream1->voice_block[0].array_voice_block));
+	printk(KERN_INFO"=%d\n\r",sizeof(stream1->voice_block[1].array_voice_block));
+
+	
+	//С заполнением вроде всё впорядке
+	for(i=0;i<sizeof(stream1->voice_block[0].array_voice_block);i++)
+	{	
+	stream1->voice_block[num_voice_block_0].size=4096;
+	stream1->voice_block[num_voice_block_0].array_voice_block[i]=0xaa;
+	}
+	
+	for(i=0;i<sizeof(stream1->voice_block[1].array_voice_block);i++)
+	{	
+		stream1->voice_block[num_voice_block_1].size=4096;
+		stream1->voice_block[num_voice_block_1].array_voice_block[i]=0xff;
+	}
+	
+	
+printk("!!COMPLETE!!!\n\r");	
+
+ 
+	  
+kfree(stream1);
+	
+	
+	
+}
+
+
+static void test_copy_array()
+{
+
+	
+//ОЧень Важно везде нужно  вставлять KERNINFO иначе мы печатаем хлам!!!	
+//Пока закоментирую массив значений для себя	
+#if 0	
+	/*Предельный разммер массива 4548 байт*/	
+	int SIZE=2272;
+	//int num_element_of_array=1024;
+	int num_bytes_of_array=0;
+	int i=0;
+	signed short    e;   //2 байт
+	//размерность одного элемента массива 
+	int type_short=2; //2 байта
+	int type_char= 1; //1 байт
+	
+	//printk("START_TEST_COPY_ARRAY\n\r");
+	signed short    mas[SIZE];   //2 байт
+	unsigned char   mas2[SIZE];   //байт;
+		
+	//Проверяем размерность массиваа
+	printk(KERN_INFO "signed short _byte= %d|elements=%d\n\r",sizeof mas,SIZE);
+	printk(KERN_INFO "unsigned char_byte=%d|elements=%d\n\r",sizeof mas2,SIZE);
+	
+	/*заполняем массивы */
+	memset(&mas,0x0000,sizeof mas);
+	memset(&mas2,0x00,sizeof mas2);
+	
+
+	 for(i=0;i<(sizeof mas/sizeof e);i++)
+	 {		
+		 mas[i] =0x1122;
+		 mas2[i]=0x33;
+		//printk("{%d|0x%x}-",i,stereo_voice_buffer[i]); 
+		//printk("{%d|0x%x}-",i,output_pcm_buf[i]);
+	 }
+  printk("MAssive_FULL_OK\n\r");
+#endif
+  
+  //Заполняем FIFO буфер
+  //func1();	
+  //Как выделить большой массив в Ядре LINUx под наши цели
+  func2();
+}
 
 
 

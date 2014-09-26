@@ -74,7 +74,7 @@ typedef struct description_packet
 
 
 struct mpcfifo {
-	DATA_lbc      q[1024];
+	DATA_lbc      q[4];
     int           N;
     int           cur_get_packet_size;
     int           fifo_pusto;

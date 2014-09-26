@@ -88,12 +88,12 @@ short g711_ulaw_decoder(short in_size,short *output_pcm_buf,const unsigned char 
     l_in_size_byte=in_size;
     printk("+g711_ulaw_decoder/in_size=%d+\n\r",l_in_size_byte);
     
-    /*   
+       
 	for(i=0;i<l_in_size_byte;i++)
 	{	
 		output_pcm_buf[i]=ulaw2linear(input_ulaw_buffer[i]);
 	}
-*/	
+	
 	
 	
 return l_in_size_byte;
