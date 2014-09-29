@@ -41,8 +41,8 @@
 /*****************************************************************************/
 /*	                 EXTERN FUNCTIONS AND DATA TYPES						 */
 /******************************************************************************/
-int  Init_audio_codecs (); //Init and Clear FIFO buffer
-int  Clear_audio_codec(); //Clear FIFO buffer
+int  Init_audio_codecs (); //Init  Audio Codec buffer
+int  Clear_audio_codec();  //Clear Audio Codec buffer
 
 /*CODER  and  Encode FUnctionS  TO DO Features NEXT */
 //short g711_alaw_encoder(const unsigned char *input_buf,short *output_buffer,size);
@@ -52,7 +52,7 @@ int  Clear_audio_codec(); //Clear FIFO buffer
 short g711_ulaw_encoder(const unsigned char *input_pcm_buf    ,short *output_ulaw_buffer,short in_size);
 //short g711_ulaw_decoder(const unsigned char *input_ulaw_buffer,short *output_pcm_buf    ,short in_size);
 
-short g711_ulaw_decoder(short in_size,short *output_ulaw_buffer,const unsigned char *input_ulaw_buffer);
+short *g711_ulaw_decoder(const unsigned short in_ulaw_byte_size,const unsigned char *input_ulaw_buffer);
 
 
 /*****************************************************************************/

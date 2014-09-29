@@ -1228,13 +1228,18 @@ static void test_sizeof_function()
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+
+
+
+////////////////////////////////////////////////////////////////////////////
 static void  func2()
 {
   
   int i;
   unsigned short  *array;   //2 байт	
   
-  array=kmalloc(6000,GFP_MASK);
+  array=kmalloc(4380,GFP_MASK);
   if(!array)
   {
 	  printk("ERROR\n\r");
@@ -1258,12 +1263,12 @@ static void  func2()
   //printk(KERN_INFO "structure_byte= %d\n\r",sizeof array);
   
   
-  for(i=0;i<5000;i++)
+  for(i=0;i<4380;i++)
   {
 	  array[i]=0x2211;
   }
  
-  printk("OK_SUPER_DUPER=0x%x\n\r",array[4500]);
+  printk("OK_SUPER_DUPER=0x%x\n\r",array[4300]);
   kfree(array);
   
 	

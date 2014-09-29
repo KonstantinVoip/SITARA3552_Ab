@@ -15,6 +15,9 @@
 /*****************************************************************************/
 /*	INCLUDES							     */
 /*****************************************************************************/
+#include <linux/slab.h>
+
+
 #include "include/Ab_arm_codec.h"
 #include "include/Ab_arm_TestBuf.h"
 
@@ -29,7 +32,7 @@
 /*	GLOBAL CONFIGURATION						     */
 /*****************************************************************************/
 short out_aPCM[16024];
-
+short *output_pcm_buf;
 
 
 /*****************************************************************************/
@@ -48,7 +51,18 @@ int  Init_audio_codecs ()
     printk("START_AUDIO_CODEC_TEST\n\r");
 	int i=0;
 	//int l_i=200;
- 
+
+	
+    output_pcm_buf=kmalloc(4380,GFP_KERNEL);
+	if(!output_pcm_buf)
+	{
+	printk("???ERROR ININT output_pcm_buf????\n\r");
+	return 0;
+	}
+	printk("++OK_Init_OUTPUT_PCM_BUF++\n\r");
+	
+	
+	
 /*	
 	for(i=0;i<8012;i++)
 	{	
@@ -69,35 +83,44 @@ int  Init_audio_codecs ()
 	*/
 		
 }
-short g711_ulaw_decoder(short in_size,short *output_pcm_buf,const unsigned char *input_ulaw_buffer)
+
+
+short * g711_ulaw_decoder(const unsigned short in_ulaw_byte_size,const unsigned char *input_ulaw_buffer)
 //short g711_ulaw_decoder(const unsigned char *input_ulaw_buffer,short *output_pcm_buf  ,short in_size)
 {
     short l_in_size_byte=0;
     short i=0;
     
     //Нечего Декодировать нам
-
-    
-    
-    if(in_size==0)
+	/*
+    output_pcm_buf=kmalloc(4380,GFP_KERNEL);
+	if(!output_pcm_buf)
+	{
+	printk("ERROR\n\r");
+	return 0;
+	}
+	*/ 
+	 
+	 
+	l_in_size_byte=in_ulaw_byte_size;
+	 
+    if(l_in_size_byte==0)
     {
      printk("NO DATA to  G711_ULAW_DECODE_to_PCM\n\r"); 
      return 0;
     }
+       
     
-    l_in_size_byte=in_size;
-    printk("+g711_ulaw_decoder/in_size=%d+\n\r",l_in_size_byte);
-    
+    //printk("+g711_ulaw_decoder/in_size=%d+\n\r",l_in_size_byte);
        
 	for(i=0;i<l_in_size_byte;i++)
 	{	
 		output_pcm_buf[i]=ulaw2linear(input_ulaw_buffer[i]);
 	}
 	
+	// printk("!g711_ulaw_decoder/in_size=%d!\n\r",l_in_size_byte);
 	
-	
-return l_in_size_byte;
-	
+return output_pcm_buf;
 }
 
 
@@ -277,6 +300,14 @@ static int ulaw2linear( int u_val)
 }
 
 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int  Clear_audio_codec()
+{
+	
+	kfree(output_pcm_buf);
+	printk("OK_CLEAR_OUTPUT_PCM_BUF\n\r"); 
+}
 
 
 

@@ -65,8 +65,8 @@ GENERAL NOTES
 
 //#define ENABLE_APLAY_WAV_FILE  1
 
-  #define LINUX_APLAY_TEST       1
-//#define KERNEL_MUDULE_TEST     1
+//  #define LINUX_APLAY_TEST       1
+    #define KERNEL_MUDULE_TEST     1
 
 
 
@@ -318,6 +318,7 @@ void Ab_arm_cleanup_module(void)
 	
        Clear_Arm_EDMA_interface();
        Clear_FIFO_voice_rtp_buf();
+       Clear_audio_codec(); 
 #endif	
 	
 

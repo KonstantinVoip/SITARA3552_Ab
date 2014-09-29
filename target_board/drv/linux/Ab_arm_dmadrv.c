@@ -144,7 +144,7 @@ Remarks:			Start Testing EDMA Callback1 function
 static inline unsigned char* get_data_array()
 {
 	 unsigned char  in_buf_rtp_dir1[4380];//размер блока приблизительный
-	 short output_pcm_buf[1024];
+	 //short output_pcm_buf[1024];
 	// unsigned char buffer_test[1460];
 	 
 	 int  in_size_rtp_dir1=0;
@@ -170,12 +170,16 @@ static inline unsigned char* get_data_array()
 	 int i;
 	 static unsigned int mcasp_count_voice_iter_dma=0;
 	 static unsigned int mcasp_count_voice_iter_cpu=0;
+	 static unsigned int mcasp_count_voice_iter_g711_ulaw=0;
 	 
 	 
 	 static unsigned int period_count_voice_iter_dma=0;
         
 	 
 	 unsigned int dma_src,dma_area;
+     short  *output=0;//Указатель на массив с закодированным сигналом наш
+      	 
+	 
 	 dma_area=dmab_slic->area;
 	 dma_src=dmab_slic->addr;
 	 
@@ -184,7 +188,7 @@ static inline unsigned char* get_data_array()
 
 	 mcasp_count_voice_iter_dma=mcasp_count_voice_iter_dma+1;
 	 mcasp_count_voice_iter_cpu=mcasp_count_voice_iter_cpu+1;
-	 
+	 mcasp_count_voice_iter_g711_ulaw=mcasp_count_voice_iter_g711_ulaw+1;
 	 
 	 //Обработка ситуации первого старта нужно записать в НОЛЬ
 	 if(start==0)
@@ -216,88 +220,65 @@ static inline unsigned char* get_data_array()
 		                               
 	 }  //обнуляем счётчик начинаем заново
 	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
 	
 	 array_current_smeschenie_dma=mcasp_count_voice_iter_dma*PERIOD_SIZE;
 	 array_current_smeschenie_cpu=mcasp_count_voice_iter_cpu*PERIOD_SIZE;
 	 
 	 //printk("array_smeschenie_dma=%d|array_smeschenie_cpu=%d\n\r",array_current_smeschenie_dma,array_current_smeschenie_cpu);
-	 //printk("mcasp=%d|DMA_array_smeschenie=%d|period=%d\n\r",mcasp_count_voice_iter_dma,array_current_smeschenie,period_count,ktime_now());
-	 //memcpy(0xffd50000+array_current_smeschenie_dma,&test_8000_stereo[(array_current_smeschenie_cpu)+0],period_size); 
-	 //memcpy(0xffd50000+array_current_smeschenie_dma,&test_sinus_32000HZ[(array_current_smeschenie_dma)+0],period_size);
-	 //Функция для работы  со  статическим массивом
-	 //memcpy(0xffd50000+array_current_smeschenie,&test_sinus_440HZ[(mcasp_count*period_size)+period_count],period_size);
+	
+	 /*1 Проверка просто  раскодированный массив PCM 16LE */
+	 //работает вроде как синус поёт как надо у нас пока подаём на вход без  кодирования наши данные чистые PCM S16_Little Endian
+	 //memcpy(0xffd50000+array_current_smeschenie_dma,&test_sinus_8000_1[(array_current_smeschenie_cpu)+0],PERIOD_SIZE); 
+	 
+	 /*2 Проверка подцепляем кодек */
+	 //пробуем кодек зацепить наш проверить как он пашет на звук
+	  //output=g711_ulaw_decoder(2000,&test_sinus_g711_uLAW[array_current_smeschenie_cpu/2]);	
+	  //memcpy(0xffd50000+array_current_smeschenie_dma,g711_ulaw_decoder(2000,&test_sinus_g711_uLAW[array_current_smeschenie_cpu/2]),PERIOD_SIZE);
 	 
 	 
+	 /*3 Проверка получаем закодированные  G.711 U_LAW данные из Пакета и проигрываме их */
 	 
-	 //out_size_of_massive=g711_ulaw_decoder(1024/*in_size_rtp_dir1*/,&output_pcm_buf,in_buf_rtp_dir1);
 	 
-	 
-	  
-#if 0	 
+//#if 0	 
 	 if(voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1)==1)
-	 {	
-	 
-	     
-		 printk("+voice_buf_get_data_in_rtp_stream1=%d+\n\r",in_size_rtp_dir1,ktime_now());
-		  
-		 
+	 {	    
+		 //printk("+voice_buf_get_data_in_rtp_stream1=%d+\n\r",in_size_rtp_dir1,ktime_now());
+		 //  output=g711_ulaw_decoder(in_size_rtp_dir1,in_buf_rtp_dir1);		 
 		
-		 out_size_of_massive=g711_ulaw_decoder(1024/*in_size_rtp_dir1*/,&output_pcm_buf,in_buf_rtp_dir1);
+         memcpy(0xffd50000+array_current_smeschenie_dma,g711_ulaw_decoder(in_size_rtp_dir1,in_buf_rtp_dir1),PERIOD_SIZE);
 		 
-		
 		 
-		 /*
+		 /* 
 		 for(i=0;i<=l_i;i++)
 		 {
 			// printk("{%d|0x%x}-",i,stereo_voice_buffer[i]); 
-			printk("{%d|0x%x}-",i,output_pcm_buf[i]);
-
-		 }*/
-		 
-		 
-		 
-		 
-		 
-		 
-		 
-		 /*
-		 prosto_count=prosto_count+1;
-		 
-		 /
-		 if(prosto_count==6)
-		 {
-			 printk("-----------PROSTO_KOUNT--------\n\r");
+			//printk(KERN_INFO"{%d|0x%x}-",i,output[i]);
+			printk("{%d|0x%x}-",i,output[i]); 
 		 }
-		  */
-		 
-		    
-		 
-		 
-		 
-		 
+		 */ 
 		  //printk("in_size_rtp_dir1=%d|packet_count=%d\n\r",in_size_rtp_dir1,num_of_pcaket++);
 		  //memcpy(0xffd50000+array_current_smeschenie,in_buf_rtp_dir1,period_size);
-	   
-	     //memcpy(0xffd50000+array_current_smeschenie,&stereo_voice_buffer[(mcasp_count*period_size)+period_count],period_size);  
+	      //memcpy(0xffd50000+array_current_smeschenie,&stereo_voice_buffer[(mcasp_count*period_size)+period_count],period_size);  
 	     	
-		 /*
-		 for(i=0;i<=l_i;i++)
-		 {
-				// printk("{%d|0x%x}-",i,stereo_voice_buffer[i]); 
-				 printk("{%d|0x%x}-",i,in_buf_rtp_dir1[i]);
-			     count++;
-		 }*/
-	   
 		 return 1; //Возврвщаем локальный буфер для проверки 
 	 }
 	 else
 	{
 		 
-		   printk("+get_data_array()/NO_DATA_IN_FIFO_BUFFER+\n\r");
+		 //  printk("+get_data_array()/NO_DATA_IN_FIFO_BUFFER+\n\r");
 		   return 0; //Возврвщаем локальный буфер для проверки
 	}
 	 
-#endif	 
+//#endif	 
   	 
     	 
 	 //Распечатаем отладочный массив данных посмотрим что здесь у нас делаеться
@@ -318,8 +299,8 @@ void timer1_routine(unsigned long data)
    //printk("+MOD_TIMER+\n\r");	
    
    get_data_array();
-   //mod_timer(&timer1_read, jiffies + msecs_to_jiffies(125)); // restarting timer  через  100 милисекунд  если я не ошибаюсь
-   mod_timer(&timer1_read, jiffies + msecs_to_jiffies(1250));
+   mod_timer(&timer1_read, jiffies + msecs_to_jiffies(125)); // restarting timer  через  100 милисекунд  если я не ошибаюсь
+  // mod_timer(&timer1_read, jiffies + msecs_to_jiffies(1250));
 }
 
 
@@ -398,7 +379,7 @@ bool Init_Arm_EDMA_interface()
       init_timer(&timer1_read);
       timer1_read.function = timer1_routine;
       timer1_read.data = 1;
-      timer1_read.expires = jiffies + msecs_to_jiffies(1250);//Старт таймера через 125[мс]
+      timer1_read.expires = jiffies + msecs_to_jiffies(125);//Старт таймера через 125[мс]
     
       
       //memcpy(0xffd50000,&null_buf[0],64000); 
