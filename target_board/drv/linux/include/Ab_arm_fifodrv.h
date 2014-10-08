@@ -51,8 +51,8 @@ void Clear_FIFO_voice_rtp_buf(); //Clear FIFO buffer
 
 
 /*Функции для входных пакетов FIFO из сети получаем и накапливаем массив*/
-bool voice_buf_get_data_in_rtp_stream1 (unsigned char *in_buf , int *in_size);
-void voice_buf_set_data_in_rtp_stream1 (const unsigned char *in_buf ,const int in_size);
+unsigned short voice_buf_get_data_in_rtp_stream1 (unsigned char *in_buf , int *in_size);
+unsigned short voice_buf_set_data_in_rtp_stream1 (const unsigned char *in_buf ,const int in_size);
 
 /*Функции  которые смотрят из TDM потоков здесь я раздеди потомучто нам нужно из пакетов получить сплошной массив данных подсунуть их в DMA*/
 bool voice_buf_get_data_in_tdm_stream1 (unsigned char *in_buf , int *in_size);
@@ -63,43 +63,6 @@ void voice_buf_set_data_in_tdm_stream1 (const unsigned char *in_buf ,const int i
 /*****************************************************************************/
 /*			                 STRUCTURES										 */
 /******************************************************************************/
-typedef struct description_packet
-{
- int size; 
- int cur_rtp_voice_payload_size;
- unsigned char data[4380];
- 
-}DATA_lbc;
-
-
-
-struct mpcfifo {
-	DATA_lbc      q[4];
-    int           N;
-    int           cur_get_packet_size;
-    int           fifo_pusto;
-    int           fifo_zapolneno;
-    //те настройки которые относяться к голосовому блоку передачи данных
-    int           voice_block_size;
-    int           all_num_of_voice_blocks;
-    int           ostatok_ot_voice_block_size;
-    int           cur_put_packet_size;
-    unsigned int  head;
-    unsigned int  tail;
-    //СПИН блокировки
-    spinlock_t    *lock;
-};
-
-
-
-
-
-
-
-
-
-
-
 
 #endif /* ABARMFIFODRV_H */
 

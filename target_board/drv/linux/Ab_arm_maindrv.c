@@ -31,6 +31,7 @@ GENERAL NOTES
 #include <linux/timer.h>  // timer 
 #include <linux/ktime.h>  // hardware timer (ktime)
 
+#include <linux/kfifo.h>
 
 /*****************************************************************************/
 /*NetFilter Linux INCLUDES							     */
@@ -65,8 +66,8 @@ GENERAL NOTES
 
 //#define ENABLE_APLAY_WAV_FILE  1
 
-//  #define LINUX_APLAY_TEST       1
-    #define KERNEL_MUDULE_TEST     1
+//      #define LINUX_APLAY_TEST       1
+        #define KERNEL_MUDULE_TEST     1
 
 
 
@@ -289,13 +290,6 @@ bool ret=0;
           
 return 0;
 }
-
-
-
-
-
-
-
 
 
 /**************************************************************************************************

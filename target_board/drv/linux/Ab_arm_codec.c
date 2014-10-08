@@ -85,7 +85,9 @@ int  Init_audio_codecs ()
 }
 
 
-short * g711_ulaw_decoder(const unsigned short in_ulaw_byte_size,const unsigned char *input_ulaw_buffer)
+
+unsigned char *g711_ulaw_decoder(const unsigned short in_ulaw_byte_size,const unsigned char *input_ulaw_buffer)
+//short * g711_ulaw_decoder(const unsigned short in_ulaw_byte_size,const unsigned char *input_ulaw_buffer)
 //short g711_ulaw_decoder(const unsigned char *input_ulaw_buffer,short *output_pcm_buf  ,short in_size)
 {
     short l_in_size_byte=0;
@@ -110,17 +112,20 @@ short * g711_ulaw_decoder(const unsigned short in_ulaw_byte_size,const unsigned 
      return 0;
     }
        
-    
-    //printk("+g711_ulaw_decoder/in_size=%d+\n\r",l_in_size_byte);
-       
+    //printk("+g711_ulaw_decoder/in_size=%d+\n\r",l_in_size_byte);   
 	for(i=0;i<l_in_size_byte;i++)
 	{	
 		output_pcm_buf[i]=ulaw2linear(input_ulaw_buffer[i]);
 	}
 	
-	// printk("!g711_ulaw_decoder/in_size=%d!\n\r",l_in_size_byte);
+	//Проверяем размерность массиваа
+	//printk(KERN_INFO "signed short _byte= %d|elements=%d\n\r",sizeof output_pcm_buf,in_ulaw_byte_size);
+	//printk(KERN_INFO "unsigned char_byte=%d|elements=%d\n\r" ,sizeof input_ulaw_buffer,in_ulaw_byte_size);
 	
-return output_pcm_buf;
+	
+	//printk("!g711_ulaw_decoder/in_size=%d!\n\r",l_in_size_byte);
+	
+return (unsigned char*)output_pcm_buf;
 }
 
 

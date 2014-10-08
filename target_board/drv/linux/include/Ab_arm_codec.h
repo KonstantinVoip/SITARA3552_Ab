@@ -51,9 +51,8 @@ int  Clear_audio_codec();  //Clear Audio Codec buffer
 
 short g711_ulaw_encoder(const unsigned char *input_pcm_buf    ,short *output_ulaw_buffer,short in_size);
 //short g711_ulaw_decoder(const unsigned char *input_ulaw_buffer,short *output_pcm_buf    ,short in_size);
-
-short *g711_ulaw_decoder(const unsigned short in_ulaw_byte_size,const unsigned char *input_ulaw_buffer);
-
+//short *g711_ulaw_decoder(const unsigned short in_ulaw_byte_size,const unsigned char *input_ulaw_buffer);
+unsigned char *g711_ulaw_decoder(const unsigned short in_ulaw_byte_size,const unsigned char *input_ulaw_buffer);
 
 /*****************************************************************************/
 /*	                 EXTERN FUNCTIONS AND DATA TYPES						 */

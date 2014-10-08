@@ -128,8 +128,8 @@ static inline ktime_t ktime_now(void)
 {
 struct timespec ts;
 ktime_get_ts(&ts);
-//printk(".%.9ld[ns]",ts.tv_nsec);          //nano second 
-  printk("%lld[s]-",(long long)ts.tv_sec);  //seconds
+printk(".%.9ld[ns]",ts.tv_nsec);          //nano second 
+//  printk("%lld[s]-",(long long)ts.tv_sec);  //seconds
 //return timespec_to_ktime(ts);
 }
 
@@ -143,11 +143,11 @@ Remarks:			Start Testing EDMA Callback1 function
 ***************************************************************************************************/
 static inline unsigned char* get_data_array()
 {
-	 unsigned char  in_buf_rtp_dir1[4380];//размер блока приблизительный
+	 unsigned char  in_buf_rtp_dir1[4000];//размер блока приблизительный
 	 //short output_pcm_buf[1024];
 	// unsigned char buffer_test[1460];
 	 
-	 int  in_size_rtp_dir1=0;
+	 unsigned short get_from_fifo_bytes=0;
 	 //Пакеты
 	 //int period_size=4000;
 	 //int array_current_smeschenie_dma=0;
@@ -209,25 +209,13 @@ static inline unsigned char* get_data_array()
 	                            
 	 }  //обнуляем счётчик начинаем заново
       
-	
-	 
-	 
-	 
+
 	 if(mcasp_count_voice_iter_cpu==4)
 	 {
 		 mcasp_count_voice_iter_cpu=0;
 		// memcpy(0xffd50000+array_current_smeschenie_dma,&test_8000_stereo[(array_current_smeschenie_cpu)+0],period_size); 
 		                               
 	 }  //обнуляем счётчик начинаем заново
-	 
-	 
-	 
-	 
-	 
-	 
-	 
-	 
-	 
 	 
 	
 	 array_current_smeschenie_dma=mcasp_count_voice_iter_dma*PERIOD_SIZE;
@@ -246,17 +234,31 @@ static inline unsigned char* get_data_array()
 	 
 	 
 	 /*3 Проверка получаем закодированные  G.711 U_LAW данные из Пакета и проигрываме их */
+//	 ktime_now();
+	 get_from_fifo_bytes=voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,4000);
+	 
+	 /*Проверяем что у нас есть здесь теперь данные  в FIFO буфере*/
+	 if(get_from_fifo_bytes>0)
+	 {
+		
+		printk("+voice_buf_get_data_in_rtp_stream1=%d+\n\r",get_from_fifo_bytes,ktime_now());
+		//Нужно посмотреть что в конце имеем  буфера тогда поймем что к чему.
+		 		 
+	 }
+	 
+
 	 
 	 
-//#if 0	 
+	 
+#if 0	 
 	 if(voice_buf_get_data_in_rtp_stream1 (&in_buf_rtp_dir1 ,&in_size_rtp_dir1)==1)
 	 {	    
-		 //printk("+voice_buf_get_data_in_rtp_stream1=%d+\n\r",in_size_rtp_dir1,ktime_now());
+		 printk("+voice_buf_get_data_in_rtp_stream1=%d+\n\r",in_size_rtp_dir1,ktime_now());
 		 //  output=g711_ulaw_decoder(in_size_rtp_dir1,in_buf_rtp_dir1);		 
 		
-         memcpy(0xffd50000+array_current_smeschenie_dma,g711_ulaw_decoder(in_size_rtp_dir1,in_buf_rtp_dir1),PERIOD_SIZE);
 		 
 		 
+         //memcpy(0xffd50000+array_current_smeschenie_dma,g711_ulaw_decoder(in_size_rtp_dir1,in_buf_rtp_dir1),PERIOD_SIZE); 
 		 /* 
 		 for(i=0;i<=l_i;i++)
 		 {
@@ -278,7 +280,7 @@ static inline unsigned char* get_data_array()
 		   return 0; //Возврвщаем локальный буфер для проверки
 	}
 	 
-//#endif	 
+#endif	 
   	 
     	 
 	 //Распечатаем отладочный массив данных посмотрим что здесь у нас делаеться
@@ -299,7 +301,7 @@ void timer1_routine(unsigned long data)
    //printk("+MOD_TIMER+\n\r");	
    
    get_data_array();
-   mod_timer(&timer1_read, jiffies + msecs_to_jiffies(125)); // restarting timer  через  100 милисекунд  если я не ошибаюсь
+   mod_timer(&timer1_read, jiffies + msecs_to_jiffies(1250)); // restarting timer  через  100 милисекунд  если я не ошибаюсь
   // mod_timer(&timer1_read, jiffies + msecs_to_jiffies(1250));
 }
 
@@ -379,7 +381,7 @@ bool Init_Arm_EDMA_interface()
       init_timer(&timer1_read);
       timer1_read.function = timer1_routine;
       timer1_read.data = 1;
-      timer1_read.expires = jiffies + msecs_to_jiffies(125);//Старт таймера через 125[мс]
+      timer1_read.expires = jiffies + msecs_to_jiffies(1250);//Старт таймера через 125[мс]
     
       
       //memcpy(0xffd50000,&null_buf[0],64000); 

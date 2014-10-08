@@ -34,6 +34,12 @@
 #include "edma.h"
 #include <plat/omap_device.h>
 
+/*Includes for Kernel FIFO */
+/*
+#include <linux/mutex.h>
+#include <linux/kfifo.h>
+#include <linux/proc_fs.h>
+*/
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -62,6 +68,8 @@
 /*Local INCLUDES							     */
 /*****************************************************************************/
 #include "include/Ab_arm_test_drv_file.h"
+//#include "include/Ab_arm_TestBuf.h"
+
 
 #define DAVINCI_PCM_FMTBITS	(\
 				SNDRV_PCM_FMTBIT_S8	|\
@@ -209,8 +217,11 @@ static void test_array_function();
 static int test_edma_function();
 static int test_edma_function_end();
 
-//TEST 5
+//TEST 4
 static void test_copy_array();
+//TEST 5
+static void test_kernel_fifo();
+
 
 
 /*****************************************************************************/
@@ -282,9 +293,9 @@ int Start_Test_Sitara_arm_func()
 	//test_edma_function();
 	//test_edma_function_end();
 	//TEST 4
-	  test_copy_array();
-  
+	//test_copy_array();
 	//TEST 5 
+    //  test_kernel_fifo();
 	return result;	
 
 }
@@ -1280,12 +1291,6 @@ static void  func2()
 
 
 
-
-
-
-
-
-
 typedef struct description_data_array
 {
  unsigned short size; //беззнаковы размер 0-65535
@@ -1411,10 +1416,202 @@ static void test_copy_array()
   func2();
 }
 
+/**********************************TESTING FOR KERNEL FIFO BUFFER's************************************/
+
+
+#if 0
+
+
+
+/* fifo size in elements (bytes) */
+#define FIFO_SIZE	/*32*/ /*4096*/ 8192
+/* lock for procfs read access */
+static DEFINE_MUTEX(read_lock);
+/* lock for procfs write access */
+static DEFINE_MUTEX(write_lock);
+/* name of the proc entry */
+#define	PROC_FIFO	"bytestream-fifo"
+
+
+
+/*
+ * define DYNAMIC in this example for a dynamically allocated fifo.
+ *
+ * Otherwise the fifo storage will be a part of the fifo structure.
+ */
+//#if 0
+#define DYNAMIC
+//#endif
+
+#ifdef DYNAMIC
+static struct kfifo test;
+#else
+static DECLARE_KFIFO(test, unsigned char, FIFO_SIZE);
+#endif
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+static const unsigned char expected_result[FIFO_SIZE] = 
+{
+	 3,  4,  5,  6,  7,  8,  9,  0,
+	 1, 20, 21, 22, 23, 24, 25, 26,
+	27, 28, 29, 30, 31, 32, 33, 34,
+	35, 36, 37, 38, 39, 40, 41, 42,
+};
+
+
+
+static int __init testfunc(void)
+{
+//	unsigned char	buf[6];
+//	unsigned char	i, j;
+//	unsigned int	ret;
+    unsigned short i=0;
+    unsigned short j=0;
+    unsigned short ret=0;
+    unsigned char  val;
+	printk(KERN_INFO "byte stream fifo test start\n");
+
+	
+	 //put values into the fifo 
+	for (i = 0; i != 8000; i++)
+	{
+		ret=kfifo_put(&test, &test_sinus_g711_uLAW[i]);
+	    if(ret==0)
+	    {
+	    	printk("FIFO is FULL=%d bytes\n\r",i);
+	        return 0;
+	    }
+		
+		//printk("%x|",ret);
+	}
+	
+	printk("OK_put!\n\r");
+	
+	
+	// check the correctness of all values in the fifo
+	
+	//Беру данные назад работает.
+	
+	
+	
+	/*
+	while (kfifo_get(&test, &val)) 
+	{
+		printk(KERN_INFO"{%d|0x%x}-",j++,val);
+	}
+	*/
+	
+	
+	
+/*	
+	// put string into the fifo 
+	kfifo_in(&test, "hello", 5);
+
+	 //put values into the fifo 
+	for (i = 0; i != 10; i++)
+	{
+		kfifo_put(&test, &i);
+	}
+		
+	// show the number of used elements 
+	printk(KERN_INFO "fifo len: %u\n", kfifo_len(&test));
+
+	// get max of 5 bytes from the fifo 
+	i = kfifo_out(&test, buf, 5);
+	printk(KERN_INFO "buf: %.*s\n", i, buf);
+
+	// get max of 2 elements from the fifo 
+	ret = kfifo_out(&test, buf, 2);
+	printk(KERN_INFO "ret: %d\n", ret);
+	// and put it back to the end of the fifo 
+	ret = kfifo_in(&test, buf, ret);
+	printk(KERN_INFO "ret: %d\n", ret);
+
+	// skip first element of the fifo 
+	printk(KERN_INFO "skip 1st element\n");
+	kfifo_skip(&test);
+
+	// put values into the fifo until is full
+	for (i = 20; kfifo_put(&test, &i); i++);
+
+	printk(KERN_INFO "queue len: %u\n", kfifo_len(&test));
+
+	// show the first value without removing from the fifo
+	if (kfifo_peek(&test, &i))
+		printk(KERN_INFO "%d\n", i);
+
+	// check the correctness of all values in the fifo
+	j = 0;
+	while (kfifo_get(&test, &i)) 
+	{
+		printk(KERN_INFO "item = %d\n", i);
+		if (i != expected_result[j++])
+		{
+			printk(KERN_WARNING "value mismatch: test failed\n");
+			return -EIO;
+		}
+	}
+	
+	if (j != ARRAY_SIZE(expected_result)) 
+	{
+		printk(KERN_WARNING "size mismatch: test failed\n");
+		return -EIO;
+	}
+	printk(KERN_INFO "test passed\n");
+*/
+	return 0;
+	
+}
 
 
 
 
+
+
+
+
+
+
+
+void test_kernel_fifo()
+{
+	#ifdef DYNAMIC
+	int ret;
+	ret = kfifo_alloc(&test, FIFO_SIZE, GFP_KERNEL);
+	if (ret) 
+	{
+		printk(KERN_ERR "error kfifo_alloc\n");
+		return ret;
+	}
+	#else
+	INIT_KFIFO(test);
+	#endif
+	
+	if (testfunc() < 0) 
+	{
+	#ifdef DYNAMIC
+			kfifo_free(&test);
+	#endif
+			return -EIO;
+	}
+
+	//PROC FS FILE SYSTEM's Create i'am do not use  this poka
+	/*
+	if (proc_create(PROC_FIFO, 0, NULL, &fifo_fops) == NULL)
+	{
+	#ifdef DYNAMIC
+			kfifo_free(&test);
+	#endif
+			return -ENOMEM;
+	}*/
+	
+return 0;
+	
+}
+
+#endif
 
 
 
