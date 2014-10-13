@@ -102,13 +102,17 @@ struct nf_hook_ops arp_bundle;
 
 
 //Порт назначения UDP 
-int udp_dest_port_LE=0x1027;  //ПОРТ 10000 туда кидаю  данные ffmpeg 
-
+int udp_dest_port_LE=0x1027;              //ПОРТ 10000 туда кидаю  данные ffmpeg 
+unsigned short udp_sapfire_port =0x56CE;  //ПОРТ откуда я получаю RTP данные с Сапфира 22222
 
 #define RTP_SOURCE_TRAFFIC_LE   0x0182A8C0   //192.168.130.1  Little  Endian
 #define RTP_SOURCE_TRAFFIC_BE   0xC0A88201   //192.168.130.1  Big     Endian         
-#define SITARA_cpsw0_IP_ADDR    0xC0A9827C  //192.168.130.124
-#define SITARA_cpsw1_IP_ADDR    0x0A000001  //10.0.0.1
+#define SITARA_cpsw0_IP_ADDR    0xC0A9827C   //192.168.130.124
+#define SITARA_cpsw1_IP_ADDR    0x0A000001   //10.0.0.1
+
+
+#define SAPFIRE_IP_ADDRESS_LE   0x010318AC  //IP адрес Сапфира откуда приходят пакеты Littlle Endian  //172.24.3.1
+#define SAPFIRE_IP_ADDRESS_BE   0xAC180301  //IP адрес Сапфира откуда приходят пакеты BIG Endian      //172.24.3.1
 
 /**************************************************************************************************
 Syntax:      	    unsigned int Hook_Func_ARp
@@ -183,7 +187,29 @@ unsigned int Hook_Func(uint hooknum,
 		  }	  
 		
 	 }
-	
+	 //////////////////////////////Получаю Данные с Сапфира/////////////////////////////
+	 if (((uint)ip->saddr==SAPFIRE_IP_ADDRESS_LE))
+	 {
+		  memcpy(&my_l_dest_udp_port,(skb->mac_header)+ETHERNET_HEADER_LEGTH+22,2);
+		  if(my_l_dest_udp_port==udp_dest_port_LE)
+		  {	 
+			    //Пакет пришёл мне обрабатываю отправляю его дальше на обработку функция отправки пакета на обработку
+			      get_rtp_prepare_packet_handler(skb->mac_header,(uint)skb->mac_len+(uint)skb->len);
+			    //printk("udp_dest=0x%x\n\r",my_l_dest_udp_port);
+			    //printk("++RTP_PACKET_SOURCE_OK++_num=%d|packet_size_bytes=%d\n\r",rtp_count++,(uint)skb->mac_len+(uint)skb->len);  			  
+			    rtp_count++;
+			    
+		   return NF_DROP;   //сбрасываю пакет он никому больше не нужен кроме меня
+		  }	  
+		
+	 }
+	 
+	 
+	 
+	 
+	 
+	 
+	 
 return NF_ACCEPT;	
 }	
 

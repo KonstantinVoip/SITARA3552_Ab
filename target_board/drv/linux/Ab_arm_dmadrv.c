@@ -241,7 +241,7 @@ static inline unsigned char* get_data_array()
 	 if(get_from_fifo_bytes>0)
 	 {
 		
-		printk("+voice_buf_get_data_in_rtp_stream1=%d+\n\r",get_from_fifo_bytes,ktime_now());
+		printk("+voice_fifo_get_data_=%d_[bytes]+\n\r",get_from_fifo_bytes,ktime_now());
 		//Нужно посмотреть что в конце имеем  буфера тогда поймем что к чему.
 		 		 
 	 }
@@ -301,7 +301,7 @@ void timer1_routine(unsigned long data)
    //printk("+MOD_TIMER+\n\r");	
    
    get_data_array();
-   mod_timer(&timer1_read, jiffies + msecs_to_jiffies(1250)); // restarting timer  через  100 милисекунд  если я не ошибаюсь
+   mod_timer(&timer1_read, jiffies + msecs_to_jiffies(40)); // restarting timer  через 250 милисекунд  если я не ошибаюсь
   // mod_timer(&timer1_read, jiffies + msecs_to_jiffies(1250));
 }
 

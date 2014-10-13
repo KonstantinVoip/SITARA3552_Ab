@@ -148,8 +148,8 @@ Remarks:			set data on input RTP packet to FIFO  buffer
 unsigned short voice_buf_get_data_in_rtp_stream1 (unsigned char *in_buf , int *in_size)
 {
 unsigned short j=0;
-signed short empty;
-
+//signed short empty;
+signed short state=0;
 
 
 
@@ -159,19 +159,24 @@ signed short empty;
 
      if(kfifo_is_empty(&test)==1)
      {
-    	 printk("++++FIFO is EMPTY++++\n\r");
+    	 //printk("++++FIFO is EMPTY++++\n\r");
     	 return 0;//FIFO is EMPTY
      }
      else
      {	 
 
-    	 //get values into the fifo 
-    	 for (j = 0; j != in_size; j++)
-    	 {
-    		 kfifo_get(&test, &in_buf[j]);
-	    //printk("%x|",ret);
-	     }
-      
+    	 //get values into the fifo берём 4000 и если и сможем 
+    	   for (j = 0; j != in_size; j++)
+    	   {
+    	       state=kfifo_get(&test, &in_buf[j]);
+    	       if(state==0)
+    	       {
+    	    	   return j;
+    	       }
+    	     		 //Добавлю ещё кусок работы по подсчёту раземера колчества  байтов которые мы полуаем	 
+    	 	         //printk("{%d|%d}",state,j);
+    	 	}
+    	     	 
      return j;
      }
 	
